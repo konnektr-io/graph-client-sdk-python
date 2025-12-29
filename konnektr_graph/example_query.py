@@ -2,6 +2,7 @@
 from konnektr_graph.client import KonnektrGraphClient
 from konnektr_graph.auth import KonnektrCredential
 
+
 def main():
     endpoint = "https://your-konnektr-api-endpoint"
     # For client credentials flow:
@@ -9,7 +10,7 @@ def main():
         domain="auth.konnektr.io",
         audience="https://graph.konnektr.io",
         client_id="YOUR_CLIENT_ID",
-        client_secret="YOUR_CLIENT_SECRET"
+        client_secret="YOUR_CLIENT_SECRET",
     )
     # For device code flow, use:
     # cred = KonnektrCredential(
@@ -29,6 +30,7 @@ def main():
             print("Next page link:", result.next_link)
     except Exception as e:
         print("Error:", e)
+
 
 if __name__ == "__main__":
     main()
