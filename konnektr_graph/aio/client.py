@@ -1,20 +1,20 @@
-# konnektr_graph/client.py
+# konnektr_graph/aio/client.py
 """
-Konnektr Graph SDK (Azure-free) - Synchronous Client
+Konnektr Graph SDK (Azure-free) - Asynchronous Client
 """
 import json
-from typing import Any, Dict, Generator, IO, Iterable, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Union, AsyncIterator
 
-import requests
+import aiohttp
 
-from .auth.protocol import TokenProvider
-from .exceptions import (
+from ..auth.protocol import AsyncTokenProvider, TokenProvider
+from ..exceptions import (
     HttpResponseError,
     ResourceNotFoundError,
     ResourceExistsError,
     AuthenticationError,
 )
-from .models import (
+from ..models import (
     DeleteJob,
     DigitalTwinsModelData,
     ImportJob,
@@ -23,9 +23,9 @@ from .models import (
 )
 
 
-class PagedIterator(Iterable):
+class AsyncPagedIterator(AsyncIterator):
     """
-    Iterator for handling paged responses.
+    Async iterator for handling paged responses.
     Supports both nextLink in body and x-ms-continuation in headers.
     """
 
@@ -54,12 +54,12 @@ class PagedIterator(Iterable):
         self._next_link = None
         self._first_page_fetched = False
 
-    def __iter__(self):
+    def __aiter__(self):
         return self
 
-    def __next__(self):
+    async def __anext__(self):
         if not self._first_page_fetched:
-            self._fetch_page(is_initial=True)
+            await self._fetch_page(is_initial=True)
             self._first_page_fetched = True
 
         if self._current_page_index < len(self._current_page_items):
@@ -68,14 +68,14 @@ class PagedIterator(Iterable):
             return item
         else:
             if not self._next_link and not self._continuation_token:
-                raise StopIteration
-            self._fetch_page()
+                raise StopAsyncIteration
+            await self._fetch_page()
             if not self._current_page_items:
-                raise StopIteration
+                raise StopAsyncIteration
             self._current_page_index = 1
             return self._current_page_items[0]
 
-    def _fetch_page(self, is_initial: bool = False):
+    async def _fetch_page(self, is_initial: bool = False):
         headers = self._headers.copy()
         params = self._params if is_initial else None
 
@@ -88,23 +88,25 @@ class PagedIterator(Iterable):
             elif self._continuation_token:
                 headers["x-ms-continuation"] = self._continuation_token
 
-        response = self._client._request(
+        # Use a low-level _request_raw to get the full response object for headers
+        # Wait, I need headers. Let's modify _request to return (data, headers) or similar?
+        # Or just handle it in _request.
+        data, resp_headers = await self._client._request_raw(
             self._method,
             request_url,
             headers=headers,
             json=self._json_data,
             params=params,
         )
-        data = response.json()
 
         # Check for continuation token in headers
-        token = response.headers.get("x-ms-continuation")
+        token = resp_headers.get("x-ms-continuation")
         self._continuation_token = token if token else None
 
         # Check for nextLink in body
         self._next_link = data.get("nextLink")
 
-        # If continuationToken is in body (legacy or specific APIs)
+        # If continuationToken is in body
         if not self._continuation_token:
             token = data.get("continuationToken")
             self._continuation_token = token if token else None
@@ -119,43 +121,85 @@ class PagedIterator(Iterable):
 
 
 class KonnektrGraphClient:
-
-    def __init__(self, endpoint: str, credential: TokenProvider):
+    def __init__(
+        self, endpoint: str, credential: Union[AsyncTokenProvider, TokenProvider]
+    ):
         """
         :param endpoint: API endpoint (e.g. https://graph.konnektr.io)
-        :param credential: TokenProvider credential
+        :param credential: AsyncTokenProvider credential
         """
         if not endpoint.startswith("http"):
             endpoint = "https://" + endpoint
         self.endpoint = endpoint.rstrip("/")
         self.credential = credential
+        self._session: Optional[aiohttp.ClientSession] = None
 
-    def _request(
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._session:
+            await self._session.close()
+
+    async def close(self):
+        """Close the client session."""
+        if self._session:
+            await self._session.close()
+            self._session = None
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+        return self._session
+
+    async def _request(
         self, method: str, url: str, headers: Optional[Dict[str, str]] = None, **kwargs
-    ) -> requests.Response:
+    ) -> Dict[str, Any]:
+        data, _ = await self._request_raw(method, url, headers=headers, **kwargs)
+        return data
+
+    async def _request_raw(
+        self, method: str, url: str, headers: Optional[Dict[str, str]] = None, **kwargs
+    ) -> tuple[Dict[str, Any], Mapping[str, str]]:
+        session = await self._get_session()
+
         if headers is None:
             headers = {}
-        headers.update(self.credential.get_headers())
 
-        # Ensure content type is set if json body is present and not set
+        # Handle async or sync credential
+        if hasattr(self.credential, "get_headers"):
+            auth_headers = self.credential.get_headers()
+            if hasattr(auth_headers, "__await__"):  # Check if awaitable
+                auth_headers = await auth_headers
+            headers.update(auth_headers)
+
+        # Ensure content type is set
         if "json" in kwargs and "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
 
-        response = requests.request(method, url, headers=headers, **kwargs)
+        async with session.request(method, url, headers=headers, **kwargs) as response:
+            if not response.ok:
+                await self._handle_error(response)
 
-        if not response.ok:
-            self._handle_error(response)
+            # For 204 No Content, return empty dict
+            if response.status == 204:
+                return {}, response.headers
+            try:
+                data = await response.json()
+                return data, response.headers
+            except Exception:
+                return {}, response.headers
 
-        return response
-
-    def _handle_error(self, response: requests.Response):
+    async def _handle_error(self, response: aiohttp.ClientResponse):
         try:
-            error_data = response.json()
+            error_data = await response.json()
             message = json.dumps(error_data)
-        except ValueError:
-            message = response.text
+        except Exception:
+            text = await response.text()
+            message = text
 
-        status_code = response.status_code
+        status_code = response.status
         if status_code == 404:
             raise ResourceNotFoundError(message, status_code)
         elif status_code == 409:
@@ -167,47 +211,44 @@ class KonnektrGraphClient:
 
     # --- Digital Twins ---
 
-    def get_digital_twin(self, digital_twin_id: str, **kwargs: Any) -> Dict[str, Any]:
+    async def get_digital_twin(
+        self, digital_twin_id: str, **kwargs: Any
+    ) -> Dict[str, Any]:
         """Get a digital twin."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}"
-        response = self._request("GET", url, **kwargs)
-        return response.json()
+        return await self._request("GET", url, **kwargs)
 
-    def upsert_digital_twin(
+    async def upsert_digital_twin(
         self, digital_twin_id: str, digital_twin: Dict[str, Any], **kwargs: Any
     ) -> Dict[str, Any]:
         """Create or update a digital twin."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}"
-        response = self._request("PUT", url, json=digital_twin, **kwargs)
-        return response.json()
+        return await self._request("PUT", url, json=digital_twin, **kwargs)
 
-    def update_digital_twin(
+    async def update_digital_twin(
         self, digital_twin_id: str, json_patch: List[Dict[str, Any]], **kwargs: Any
     ) -> None:
         """Update a digital twin (JSON Patch)."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}"
-        # Header for patch? usually application/json-patch+json but ADT accepts application/json too mostly?
-        # ADT spec requires Content-Type: application/json-patch+json
         headers = kwargs.pop("headers", {})
         headers["Content-Type"] = "application/json-patch+json"
-        self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
+        await self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
-    def delete_digital_twin(self, digital_twin_id: str, **kwargs: Any) -> None:
+    async def delete_digital_twin(self, digital_twin_id: str, **kwargs: Any) -> None:
         """Delete a digital twin."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}"
-        self._request("DELETE", url, **kwargs)
+        await self._request("DELETE", url, **kwargs)
 
     # --- Components ---
 
-    def get_component(
+    async def get_component(
         self, digital_twin_id: str, component_name: str, **kwargs: Any
     ) -> Dict[str, Any]:
         """Get a component."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/components/{component_name}"
-        response = self._request("GET", url, **kwargs)
-        return response.json()
+        return await self._request("GET", url, **kwargs)
 
-    def update_component(
+    async def update_component(
         self,
         digital_twin_id: str,
         component_name: str,
@@ -218,19 +259,18 @@ class KonnektrGraphClient:
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/components/{component_name}"
         headers = kwargs.pop("headers", {})
         headers["Content-Type"] = "application/json-patch+json"
-        self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
+        await self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
     # --- Relationships ---
 
-    def get_relationship(
+    async def get_relationship(
         self, digital_twin_id: str, relationship_id: str, **kwargs: Any
     ) -> Dict[str, Any]:
         """Get a relationship."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
-        response = self._request("GET", url, **kwargs)
-        return response.json()
+        return await self._request("GET", url, **kwargs)
 
-    def upsert_relationship(
+    async def upsert_relationship(
         self,
         digital_twin_id: str,
         relationship_id: str,
@@ -239,10 +279,9 @@ class KonnektrGraphClient:
     ) -> Dict[str, Any]:
         """Create or update a relationship."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
-        response = self._request("PUT", url, json=relationship, **kwargs)
-        return response.json()
+        return await self._request("PUT", url, json=relationship, **kwargs)
 
-    def update_relationship(
+    async def update_relationship(
         self,
         digital_twin_id: str,
         relationship_id: str,
@@ -253,35 +292,35 @@ class KonnektrGraphClient:
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
         headers = kwargs.pop("headers", {})
         headers["Content-Type"] = "application/json-patch+json"
-        self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
+        await self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
-    def delete_relationship(
+    async def delete_relationship(
         self, digital_twin_id: str, relationship_id: str, **kwargs: Any
     ) -> None:
         """Delete a relationship."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
-        self._request("DELETE", url, **kwargs)
+        await self._request("DELETE", url, **kwargs)
 
     def list_relationships(
         self,
         digital_twin_id: str,
         relationship_name: Optional[str] = None,
         **kwargs: Any,
-    ) -> PagedIterator:
+    ) -> AsyncPagedIterator:
         """List relationships."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships"
         params = kwargs.pop("params", {})
         if relationship_name:
             params["relationshipName"] = relationship_name
 
-        return PagedIterator(self, url, params=params, **kwargs)
+        return AsyncPagedIterator(self, url, params=params, **kwargs)
 
     def list_incoming_relationships(
         self, digital_twin_id: str, **kwargs: Any
-    ) -> PagedIterator:
+    ) -> AsyncPagedIterator:
         """List incoming relationships."""
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/incomingrelationships"
-        return PagedIterator(self, url, model_cls=IncomingRelationship, **kwargs)
+        return AsyncPagedIterator(self, url, model_cls=IncomingRelationship, **kwargs)
 
     # --- Query ---
 
@@ -290,7 +329,7 @@ class KonnektrGraphClient:
         query_expression: str,
         max_items_per_page: Optional[int] = None,
         **kwargs: Any,
-    ) -> PagedIterator:
+    ) -> AsyncPagedIterator:
         """Query digital twins."""
         url = f"{self.endpoint}/query"
         headers = kwargs.pop("headers", {})
@@ -299,13 +338,13 @@ class KonnektrGraphClient:
 
         body = {"query": query_expression}
 
-        return PagedIterator(
+        return AsyncPagedIterator(
             self, url, method="POST", json_data=body, headers=headers, **kwargs
         )
 
     # --- Models ---
 
-    def get_model(
+    async def get_model(
         self, model_id: str, include_model_definition: bool = False, **kwargs: Any
     ) -> DigitalTwinsModelData:
         """Get a model."""
@@ -313,8 +352,8 @@ class KonnektrGraphClient:
         params = kwargs.pop("params", {})
         params["includeModelDefinition"] = str(include_model_definition).lower()
 
-        response = self._request("GET", url, params=params, **kwargs)
-        return DigitalTwinsModelData.from_dict(response.json())
+        data = await self._request("GET", url, params=params, **kwargs)
+        return DigitalTwinsModelData.from_dict(data)
 
     def list_models(
         self,
@@ -322,25 +361,19 @@ class KonnektrGraphClient:
         include_model_definition: bool = False,
         results_per_page: Optional[int] = None,
         **kwargs: Any,
-    ) -> PagedIterator:
+    ) -> AsyncPagedIterator:
         """List models."""
         url = f"{self.endpoint}/models"
         params = kwargs.pop("params", {})
         params["includeModelDefinition"] = str(include_model_definition).lower()
         if dependencies_for:
-            if isinstance(dependencies_for, list):
-                # ADT expects multiple dependenciesFor parameters? or CSV?
-                # ADT spec says 'dependenciesFor' can be array, but usually passed as multi-value param?
-                # Requests handles list as multi-value params.
-                params["dependenciesFor"] = dependencies_for
-            else:
-                params["dependenciesFor"] = dependencies_for
+            params["dependenciesFor"] = dependencies_for
 
         headers = kwargs.pop("headers", {})
         if results_per_page:
             headers["max-items-per-page"] = str(results_per_page)
 
-        return PagedIterator(
+        return AsyncPagedIterator(
             self,
             url,
             params=params,
@@ -349,31 +382,31 @@ class KonnektrGraphClient:
             **kwargs,
         )
 
-    def create_models(
+    async def create_models(
         self, dtdl_models: List[Dict[str, Any]], **kwargs: Any
     ) -> List[DigitalTwinsModelData]:
         """Create models."""
         url = f"{self.endpoint}/models"
-        response = self._request("POST", url, json=dtdl_models, **kwargs)
-        return [DigitalTwinsModelData.from_dict(m) for m in response.json()]
+        data = await self._request("POST", url, json=dtdl_models, **kwargs)
+        return [DigitalTwinsModelData.from_dict(m) for m in data]
 
-    def decommission_model(self, model_id: str, **kwargs: Any) -> None:
+    async def decommission_model(self, model_id: str, **kwargs: Any) -> None:
         """Decommission a model."""
         url = f"{self.endpoint}/models/{model_id}"
         json_patch = [{"op": "replace", "path": "/decommissioned", "value": True}]
         headers = kwargs.pop("headers", {})
         headers["Content-Type"] = "application/json-patch+json"
 
-        self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
+        await self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
-    def delete_model(self, model_id: str, **kwargs: Any) -> None:
+    async def delete_model(self, model_id: str, **kwargs: Any) -> None:
         """Delete a model."""
         url = f"{self.endpoint}/models/{model_id}"
-        self._request("DELETE", url, **kwargs)
+        await self._request("DELETE", url, **kwargs)
 
     # --- Telemetry ---
 
-    def publish_telemetry(
+    async def publish_telemetry(
         self,
         digital_twin_id: str,
         telemetry: Dict[str, Any],
@@ -386,9 +419,9 @@ class KonnektrGraphClient:
         if message_id:
             headers["Message-Id"] = message_id
 
-        self._request("POST", url, json=telemetry, headers=headers, **kwargs)
+        await self._request("POST", url, json=telemetry, headers=headers, **kwargs)
 
-    def publish_component_telemetry(
+    async def publish_component_telemetry(
         self,
         digital_twin_id: str,
         component_name: str,
@@ -402,59 +435,57 @@ class KonnektrGraphClient:
         if message_id:
             headers["Message-Id"] = message_id
 
-        self._request("POST", url, json=telemetry, headers=headers, **kwargs)
+        await self._request("POST", url, json=telemetry, headers=headers, **kwargs)
 
     # --- Import Jobs ---
 
-    def list_import_jobs(self, **kwargs: Any) -> PagedIterator:
+    def list_import_jobs(self, **kwargs: Any) -> AsyncPagedIterator:
         """List import jobs."""
         url = f"{self.endpoint}/jobs/import"
-        return PagedIterator(self, url, model_cls=ImportJob, **kwargs)
+        return AsyncPagedIterator(self, url, model_cls=ImportJob, **kwargs)
 
-    def get_import_job(self, job_id: str, **kwargs: Any) -> ImportJob:
+    async def get_import_job(self, job_id: str, **kwargs: Any) -> ImportJob:
         """Get an import job."""
         url = f"{self.endpoint}/jobs/import/{job_id}"
-        response = self._request("GET", url, **kwargs)
-        return ImportJob.from_dict(response.json())
+        data = await self._request("GET", url, **kwargs)
+        return ImportJob.from_dict(data)
 
-    def create_import_job(
+    async def create_import_job(
         self, job_id: str, import_job: Dict[str, Any], **kwargs: Any
     ) -> ImportJob:
         """Create an import job."""
         url = f"{self.endpoint}/jobs/import/{job_id}"
-        response = self._request("PUT", url, json=import_job, **kwargs)
-        return ImportJob.from_dict(response.json())
+        data = await self._request("PUT", url, json=import_job, **kwargs)
+        return ImportJob.from_dict(data)
 
-    def delete_import_job(self, job_id: str, **kwargs: Any) -> None:
+    async def delete_import_job(self, job_id: str, **kwargs: Any) -> None:
         """Delete an import job."""
         url = f"{self.endpoint}/jobs/import/{job_id}"
-        self._request("DELETE", url, **kwargs)
+        await self._request("DELETE", url, **kwargs)
 
-    def cancel_import_job(self, job_id: str, **kwargs: Any) -> ImportJob:
+    async def cancel_import_job(self, job_id: str, **kwargs: Any) -> ImportJob:
         """Cancel an import job."""
         url = f"{self.endpoint}/jobs/import/{job_id}"
-        response = self._request("POST", url, **kwargs)
-        return ImportJob.from_dict(response.json())
+        data = await self._request("POST", url, **kwargs)
+        return ImportJob.from_dict(data)
 
     # --- Delete Jobs ---
 
-    def list_delete_jobs(self, **kwargs: Any) -> PagedIterator:
+    def list_delete_jobs(self, **kwargs: Any) -> AsyncPagedIterator:
         """List delete jobs."""
         url = f"{self.endpoint}/jobs/deletion"
-        return PagedIterator(self, url, model_cls=DeleteJob, **kwargs)
+        return AsyncPagedIterator(self, url, model_cls=DeleteJob, **kwargs)
 
-    def get_delete_job(self, job_id: str, **kwargs: Any) -> DeleteJob:
+    async def get_delete_job(self, job_id: str, **kwargs: Any) -> DeleteJob:
         """Get a delete job."""
         url = f"{self.endpoint}/jobs/deletion/{job_id}"
-        response = self._request("GET", url, **kwargs)
-        return DeleteJob.from_dict(response.json())
+        data = await self._request("GET", url, **kwargs)
+        return DeleteJob.from_dict(data)
 
-    def create_delete_job(
+    async def create_delete_job(
         self, job_id: str, delete_job: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> DeleteJob:
         """Create a delete job."""
         url = f"{self.endpoint}/jobs/deletion/{job_id}"
-        # Delete job creation might have an empty body or specific options?
-        # ADT usually takes an empty body or optional params
-        response = self._request("PUT", url, json=delete_job or {}, **kwargs)
-        return DeleteJob.from_dict(response.json())
+        data = await self._request("PUT", url, json=delete_job or {}, **kwargs)
+        return DeleteJob.from_dict(data)
