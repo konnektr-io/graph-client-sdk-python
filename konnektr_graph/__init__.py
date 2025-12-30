@@ -16,7 +16,6 @@ from .models import (
     DeleteJob,
     DigitalTwinsModelData,
     IncomingRelationship,
-    QueryResult,
 )
 
 __all__ = [
@@ -31,5 +30,4 @@ __all__ = [
     "DeleteJob",
     "DigitalTwinsModelData",
     "IncomingRelationship",
-    "QueryResult",
 ]

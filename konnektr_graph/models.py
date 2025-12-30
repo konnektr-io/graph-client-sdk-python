@@ -8,22 +8,32 @@ from typing import Any, Dict, List, Optional, Union
 
 @dataclass
 class ImportJob:
-    """Represents an import job."""
+    """
+    Represents an import job.
 
-    id: str
-    status: (
-        str  # notstarted, running, completed, diffing, failed, cancelling, cancelled
-    )
-    input_blob_uri: str
-    output_blob_uri: str
-    created_date_time: str
-    last_action_date_time: Optional[str] = None
-    finished_date_time: Optional[str] = None
-    purge_date_time: Optional[str] = None
-    error: Optional[Dict[str, Any]] = None
+    Attributes:
+        id: The unique identifier for the job.
+        status: The current status of the job (e.g., 'notstarted', 'running', 'completed').
+        input_blob_uri: The URI of the input blob.
+        output_blob_uri: The URI of the output blob.
+        created_date_time: The date and time the job was created.
+        last_action_date_time: The date and time of the last action.
+        finished_date_time: The date and time the job finished.
+        purge_date_time: The date and time the job will be purged.
+        error: Optional error information if the job failed.
+    """
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ImportJob":
+        """
+        Create an ImportJob instance from a dictionary.
+
+        Args:
+            data: A dictionary containing the import job data.
+
+        Returns:
+            An ImportJob instance.
+        """
         return cls(
             id=data["id"],
             status=data["status"],
@@ -39,18 +49,30 @@ class ImportJob:
 
 @dataclass
 class DeleteJob:
-    """Represents a delete job."""
+    """
+    Represents a delete job.
 
-    id: str
-    status: str  # notstarted, running, completed, failed, cancelling, cancelled
-    created_date_time: str
-    last_action_date_time: Optional[str] = None
-    finished_date_time: Optional[str] = None
-    purge_date_time: Optional[str] = None
-    error: Optional[Dict[str, Any]] = None
+    Attributes:
+        id: The unique identifier for the job.
+        status: The current status of the job (e.g., 'notstarted', 'running', 'completed').
+        created_date_time: The date and time the job was created.
+        last_action_date_time: The date and time of the last action.
+        finished_date_time: The date and time the job finished.
+        purge_date_time: The date and time the job will be purged.
+        error: Optional error information if the job failed.
+    """
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DeleteJob":
+        """
+        Create a DeleteJob instance from a dictionary.
+
+        Args:
+            data: A dictionary containing the delete job data.
+
+        Returns:
+            A DeleteJob instance.
+        """
         return cls(
             id=data["id"],
             status=data["status"],
@@ -64,17 +86,29 @@ class DeleteJob:
 
 @dataclass
 class DigitalTwinsModelData:
-    """Represents a DTDL model."""
+    """
+    Represents a DTDL model metadata and definition.
 
-    id: str
-    description: Optional[Union[str, Dict[str, str]]] = None
-    display_name: Optional[Union[str, Dict[str, str]]] = None
-    decommissioned: bool = False
-    upload_time: Optional[str] = None
-    model: Optional[Dict[str, Any]] = None  # The full DTDL definition
+    Attributes:
+        id: The unique identifier for the model.
+        description: Optional description of the model.
+        display_name: Optional display name of the model.
+        decommissioned: Whether the model is decommissioned.
+        upload_time: The date and time the model was uploaded.
+        model: The full DTDL model definition.
+    """
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DigitalTwinsModelData":
+        """
+        Create a DigitalTwinsModelData instance from a dictionary.
+
+        Args:
+            data: A dictionary containing the model data.
+
+        Returns:
+            A DigitalTwinsModelData instance.
+        """
         return cls(
             id=data["id"],
             description=data.get("description"),
@@ -87,7 +121,15 @@ class DigitalTwinsModelData:
 
 @dataclass
 class IncomingRelationship:
-    """Represents an incoming relationship."""
+    """
+    Represents an incoming relationship for a digital twin.
+
+    Attributes:
+        relationship_id: The ID of the relationship.
+        source_id: The source of the relationship.
+        relationship_name: The name of the relationship.
+        relationship_link: A link to the relationship definition.
+    """
 
     relationship_id: str
     source_id: str
@@ -96,34 +138,18 @@ class IncomingRelationship:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "IncomingRelationship":
+        """
+        Create an IncomingRelationship instance from a dictionary.
+
+        Args:
+            data: A dictionary containing the relationship data.
+
+        Returns:
+            An IncomingRelationship instance.
+        """
         return cls(
             relationship_id=data["relationshipId"],
             source_id=data["sourceId"],
             relationship_name=data["relationshipName"],
             relationship_link=data.get("relationshipLink"),
         )
-
-
-class PagedResult:
-    """
-    Generic class for paged results.
-    Mimics Azure's ItemPaged to some extent but simpler.
-    """
-
-    def __init__(self, items: List[Any], next_link: Optional[str] = None):
-        self.value = items
-        self.next_link = next_link
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any], item_cls=None) -> "PagedResult":
-        items_data = data.get("value", [])
-        if item_cls and hasattr(item_cls, "from_dict"):
-            items = [item_cls.from_dict(item) for item in items_data]
-        else:
-            items = items_data
-        next_link = data.get("nextLink")
-        return cls(items, next_link)
-
-
-# Type alias for query results which are just dicts usually
-QueryResult = PagedResult

@@ -1,0 +1,13 @@
+# pydoc-markdown.yml
+loaders:
+  - type: python
+    search_path: ["."]
+    packages: ["konnektr_graph"]
+processors:
+  - type: filter
+    documented_only: true
+  - type: google
+  - type: smart
+renderers:
+  - type: markdown
+    output_file: docs/api/api_reference.md
