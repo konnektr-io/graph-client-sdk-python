@@ -23,6 +23,16 @@ class ImportJob:
         error: Optional error information if the job failed.
     """
 
+    id: str
+    status: str
+    input_blob_uri: str
+    output_blob_uri: str
+    created_date_time: str
+    last_action_date_time: Optional[str] = None
+    finished_date_time: Optional[str] = None
+    purge_date_time: Optional[str] = None
+    error: Optional[Any] = None
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ImportJob":
         """
@@ -62,6 +72,14 @@ class DeleteJob:
         error: Optional error information if the job failed.
     """
 
+    id: str
+    status: str
+    created_date_time: str
+    last_action_date_time: Optional[str] = None
+    finished_date_time: Optional[str] = None
+    purge_date_time: Optional[str] = None
+    error: Optional[Any] = None
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DeleteJob":
         """
@@ -97,6 +115,13 @@ class DigitalTwinsModelData:
         upload_time: The date and time the model was uploaded.
         model: The full DTDL model definition.
     """
+
+    id: str
+    description: Optional[str] = None
+    display_name: Optional[str] = None
+    decommissioned: bool = False
+    upload_time: Optional[str] = None
+    model: Optional[Any] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DigitalTwinsModelData":
