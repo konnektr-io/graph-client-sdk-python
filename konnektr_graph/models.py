@@ -6,14 +6,16 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from .types import (
+    DtdlCommand,
+    DtdlComponent,
     DtdlInterface,
+    DtdlProperty,
+    DtdlRelationship,
+    DtdlTelemetry,
     ErrorDict,
     JobId,
     JobStatus,
     ModelId,
-    RelationshipId,
-    RelationshipName,
-    DigitalTwinId,
 )
 
 
@@ -179,6 +181,12 @@ class DigitalTwinsModelData:
     decommissioned: bool = False
     upload_time: Optional[str] = None
     model: Optional[DtdlInterface] = None
+    bases: Optional[list[str]] = None
+    properties: Optional[list[DtdlProperty]] = None
+    relationships: Optional[list[DtdlRelationship]] = None
+    components: Optional[list[DtdlComponent]] = None
+    telemetries: Optional[list[DtdlTelemetry]] = None
+    commands: Optional[list[DtdlCommand]] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DigitalTwinsModelData":
@@ -201,6 +209,16 @@ class DigitalTwinsModelData:
             model=(
                 DtdlInterface.from_dict(model_data) if model_data is not None else None
             ),
+            bases=data.get("bases"),
+            properties=[DtdlProperty.from_dict(p) for p in data.get("properties", [])],
+            relationships=[
+                DtdlRelationship.from_dict(r) for r in data.get("relationships", [])
+            ],
+            components=[DtdlComponent.from_dict(c) for c in data.get("components", [])],
+            telemetries=[
+                DtdlTelemetry.from_dict(t) for t in data.get("telemetries", [])
+            ],
+            commands=[DtdlCommand.from_dict(c) for c in data.get("commands", [])],
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -224,4 +242,16 @@ class DigitalTwinsModelData:
             result["model"] = (
                 self.model.to_dict() if hasattr(self.model, "to_dict") else self.model
             )
+        if self.bases is not None:
+            result["bases"] = self.bases
+        if self.properties is not None:
+            result["properties"] = [p.to_dict() for p in self.properties]
+        if self.relationships is not None:
+            result["relationships"] = [r.to_dict() for r in self.relationships]
+        if self.components is not None:
+            result["components"] = [c.to_dict() for c in self.components]
+        if self.telemetries is not None:
+            result["telemetries"] = [t.to_dict() for t in self.telemetries]
+        if self.commands is not None:
+            result["commands"] = [c.to_dict() for c in self.commands]
         return result

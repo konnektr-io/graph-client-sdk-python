@@ -486,14 +486,17 @@ class KonnektrGraphClient:
     # --- Models ---
 
     def get_model(
-        self, model_id: ModelId, include_model_definition: bool = False, **kwargs: Any
+        self,
+        model_id: ModelId,
+        include_base_model_contents: bool = False,
+        **kwargs: Any,
     ) -> DigitalTwinsModelData:
         """
         Get a model.
 
         Args:
             model_id: The ID of the model.
-            include_model_definition: Whether to include the model definition.
+            include_base_model_contents: Whether to include the model (inherited) model contents.
             **kwargs: Additional request options.
 
         Returns:
@@ -501,7 +504,7 @@ class KonnektrGraphClient:
         """
         url = f"{self.endpoint}/models/{model_id}"
         params = kwargs.pop("params", {})
-        params["includeModelDefinition"] = str(include_model_definition).lower()
+        params["includeBaseModelContents"] = str(include_base_model_contents).lower()
 
         response = self._request("GET", url, params=params, **kwargs)
         return DigitalTwinsModelData.from_dict(response.json())

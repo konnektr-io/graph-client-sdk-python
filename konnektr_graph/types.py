@@ -745,9 +745,60 @@ class DtdlComponent:
         return result
 
 
+@dataclass
+class DtdlCommand:
+    """A DTDL command definition."""
+
+    name: str
+    type: Union[Literal["Command"], List[str]]  # Represents @type in JSON
+    request: Optional[Dict[str, Any]] = None  # Request schema
+    response: Optional[Dict[str, Any]] = None  # Response schema
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlCommand":
+        return cls(
+            name=data["name"],
+            request=data.get("request"),
+            response=data.get("response"),
+            type=data.get("@type", "Command"),
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "name": self.name,
+            "@type": self.type,
+        }
+        if self.request is not None:
+            result["request"] = self.request
+        if self.response is not None:
+            result["response"] = self.response
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
 # Content can be any of these types
 DtdlContent = Union[
-    DtdlProperty, DtdlRelationship, DtdlTelemetry, DtdlComponent, Dict[str, Any]
+    DtdlProperty,
+    DtdlRelationship,
+    DtdlTelemetry,
+    DtdlComponent,
+    DtdlCommand,
+    Dict[str, Any],
 ]
 
 

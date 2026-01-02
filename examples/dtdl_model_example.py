@@ -195,7 +195,7 @@ def parse_model_from_api():
 
     # Get model from API (returns DigitalTwinsModelData)
     model_data = client.get_model(
-        "dtmi:com:example:Room;1", include_model_definition=True
+        "dtmi:com:example:Room;1", include_base_model_contents=True
     )
 
     # The model definition is in model_data.model
