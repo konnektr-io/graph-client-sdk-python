@@ -30,7 +30,6 @@ from .models import (
     DeleteJob,
     DigitalTwinsModelData,
     ImportJob,
-    IncomingRelationship,
 )
 from .types import (
     BasicDigitalTwin,
@@ -38,10 +37,10 @@ from .types import (
     BasicRelationship,
     ComponentName,
     DigitalTwinId,
+    DtdlInterface,
     JobId,
     JsonPatchOperation,
     MessageId,
-    ModelDict,
     ModelId,
     QueryExpression,
     RelationshipId,
@@ -440,7 +439,7 @@ class KonnektrGraphClient:
 
     def list_incoming_relationships(
         self, digital_twin_id: DigitalTwinId, **kwargs: Any
-    ) -> PagedIterator[IncomingRelationship]:
+    ) -> PagedIterator[BasicRelationship]:
         """
         List incoming relationships for a digital twin.
 
@@ -452,7 +451,7 @@ class KonnektrGraphClient:
             An iterator over the incoming relationships.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/incomingrelationships"
-        return PagedIterator(self, url, model_cls=IncomingRelationship, **kwargs)
+        return PagedIterator(self, url, model_cls=BasicRelationship, **kwargs)
 
     # --- Query ---
 
@@ -552,7 +551,7 @@ class KonnektrGraphClient:
         )
 
     def create_models(
-        self, dtdl_models: List[ModelDict], **kwargs: Any
+        self, dtdl_models: List[DtdlInterface], **kwargs: Any
     ) -> List[DigitalTwinsModelData]:
         """
         Create models.

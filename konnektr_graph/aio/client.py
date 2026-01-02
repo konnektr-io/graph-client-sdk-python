@@ -29,7 +29,6 @@ from ..models import (
     DeleteJob,
     DigitalTwinsModelData,
     ImportJob,
-    IncomingRelationship,
 )
 from ..types import (
     BasicDigitalTwin,
@@ -37,10 +36,10 @@ from ..types import (
     BasicRelationship,
     ComponentName,
     DigitalTwinId,
+    DtdlInterface,
     JobId,
     JsonPatchOperation,
     MessageId,
-    ModelDict,
     ModelId,
     QueryExpression,
     RelationshipId,
@@ -154,9 +153,9 @@ class AsyncPagedIterator(AsyncIterator[T], Generic[T]):
 
         raw_items = data.get(self._items_key, [])
         if self._model_cls and hasattr(self._model_cls, "from_dict"):
-            self._current_page_items = [self._model_cls.from_dict(i) for i in raw_items]
+            self._current_page_items = [self._model_cls.from_dict(i) for i in raw_items]  # type: ignore
         else:
-            self._current_page_items = raw_items
+            self._current_page_items = raw_items  # type: ignore
 
         self._current_page_index = 0
 
@@ -199,13 +198,13 @@ class KonnektrGraphClient:
 
     async def _request(
         self, method: str, url: str, headers: Optional[Dict[str, str]] = None, **kwargs
-    ) -> Dict[str, Any]:
+    ) -> Any:
         data, _ = await self._request_raw(method, url, headers=headers, **kwargs)
         return data
 
     async def _request_raw(
         self, method: str, url: str, headers: Optional[Dict[str, str]] = None, **kwargs
-    ) -> tuple[Dict[str, Any], Mapping[str, str]]:
+    ) -> tuple[Any, Mapping[str, str]]:
         session = await self._get_session()
 
         if headers is None:
@@ -215,8 +214,8 @@ class KonnektrGraphClient:
         if hasattr(self.credential, "get_headers"):
             auth_headers = self.credential.get_headers()
             if hasattr(auth_headers, "__await__"):  # Check if awaitable
-                auth_headers = await auth_headers
-            headers.update(auth_headers)
+                auth_headers = await auth_headers  # type: ignore
+            headers.update(auth_headers)  # type: ignore
 
         # Ensure content type is set
         if "json" in kwargs and "Content-Type" not in headers:
@@ -481,7 +480,7 @@ class KonnektrGraphClient:
 
     def list_incoming_relationships(
         self, digital_twin_id: DigitalTwinId, **kwargs: Any
-    ) -> AsyncPagedIterator[IncomingRelationship]:
+    ) -> AsyncPagedIterator[BasicRelationship]:
         """
         List incoming relationships for a digital twin.
 
@@ -493,7 +492,7 @@ class KonnektrGraphClient:
             An async iterator over the incoming relationships.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/incomingrelationships"
-        return AsyncPagedIterator(self, url, model_cls=IncomingRelationship, **kwargs)
+        return AsyncPagedIterator(self, url, model_cls=BasicRelationship, **kwargs)
 
     # --- Query ---
 
@@ -587,7 +586,7 @@ class KonnektrGraphClient:
         )
 
     async def create_models(
-        self, dtdl_models: List[ModelDict], **kwargs: Any
+        self, dtdl_models: List[DtdlInterface], **kwargs: Any
     ) -> List[DigitalTwinsModelData]:
         """
         Create models.

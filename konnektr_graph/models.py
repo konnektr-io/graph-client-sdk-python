@@ -2,15 +2,14 @@
 """
 Konnektr Graph SDK models (Azure-free).
 """
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 from .types import (
+    DtdlInterface,
     ErrorDict,
     JobId,
     JobStatus,
-    ModelDict,
     ModelId,
     RelationshipId,
     RelationshipName,
@@ -179,7 +178,7 @@ class DigitalTwinsModelData:
     display_name: Optional[str] = None
     decommissioned: bool = False
     upload_time: Optional[str] = None
-    model: Optional[ModelDict] = None
+    model: Optional[DtdlInterface] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DigitalTwinsModelData":
@@ -192,13 +191,16 @@ class DigitalTwinsModelData:
         Returns:
             A DigitalTwinsModelData instance.
         """
+        model_data = data.get("model")
         return cls(
             id=data["id"],
             description=data.get("description"),
             display_name=data.get("displayName"),
             decommissioned=data.get("decommissioned", False),
             upload_time=data.get("uploadTime"),
-            model=data.get("model"),
+            model=(
+                DtdlInterface.from_dict(model_data) if model_data is not None else None
+            ),
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -219,57 +221,7 @@ class DigitalTwinsModelData:
         if self.upload_time is not None:
             result["uploadTime"] = self.upload_time
         if self.model is not None:
-            result["model"] = self.model
-        return result
-
-
-@dataclass
-class IncomingRelationship:
-    """
-    Represents an incoming relationship for a digital twin.
-
-    Attributes:
-        relationship_id: The ID of the relationship.
-        source_id: The source of the relationship.
-        relationship_name: The name of the relationship.
-        relationship_link: A link to the relationship definition.
-    """
-
-    relationship_id: RelationshipId
-    source_id: DigitalTwinId
-    relationship_name: RelationshipName
-    relationship_link: Optional[str] = None
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "IncomingRelationship":
-        """
-        Create an IncomingRelationship instance from a dictionary.
-
-        Args:
-            data: A dictionary containing the relationship data.
-
-        Returns:
-            An IncomingRelationship instance.
-        """
-        return cls(
-            relationship_id=data["relationshipId"],
-            source_id=data["sourceId"],
-            relationship_name=data["relationshipName"],
-            relationship_link=data.get("relationshipLink"),
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the IncomingRelationship instance to a dictionary.
-
-        Returns:
-            A dictionary representation of the IncomingRelationship.
-        """
-        result: Dict[str, Any] = {
-            "relationshipId": self.relationship_id,
-            "sourceId": self.source_id,
-            "relationshipName": self.relationship_name,
-        }
-        if self.relationship_link is not None:
-            result["relationshipLink"] = self.relationship_link
+            result["model"] = (
+                self.model.to_dict() if hasattr(self.model, "to_dict") else self.model
+            )
         return result

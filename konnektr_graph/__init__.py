@@ -15,7 +15,6 @@ from .models import (
     ImportJob,
     DeleteJob,
     DigitalTwinsModelData,
-    IncomingRelationship,
 )
 from .types import (
     # Structured Models (Dataclasses)
@@ -23,6 +22,24 @@ from .types import (
     BasicRelationship,
     BasicDigitalTwinComponent,
     DigitalTwinMetadata,
+    # DTDL Model Types
+    DtdlInterface,
+    DtdlProperty,
+    DtdlRelationship,
+    DtdlTelemetry,
+    DtdlComponent,
+    DtdlEnumSchema,
+    DtdlMapSchema,
+    DtdlObjectSchema,
+    DtdlArraySchema,
+    DtdlObjectField,
+    DtdlEnumValue,
+    DtdlMapKey,
+    DtdlMapValue,
+    DtdlLocalizableString,
+    DtdlPrimitiveSchema,
+    DtdlSchema,
+    DtdlContent,
     # Type aliases
     DigitalTwinId,
     ComponentName,
@@ -33,16 +50,9 @@ from .types import (
     MessageId,
     JobStatus,
     QueryExpression,
-    ETag,
-    # TypedDicts and utility types
-    ModelDict,
     JsonPatchOperation,
     TelemetryPayload,
     ErrorDict,
-    ImportJobDict,
-    DeleteJobDict,
-    ModelDataDict,
-    IncomingRelationshipDict,
 )
 
 __all__ = [
@@ -60,12 +70,29 @@ __all__ = [
     "ImportJob",
     "DeleteJob",
     "DigitalTwinsModelData",
-    "IncomingRelationship",
     # Structured Models (Dataclasses)
     "BasicDigitalTwin",
     "BasicRelationship",
     "BasicDigitalTwinComponent",
     "DigitalTwinMetadata",
+    # DTDL Model Types
+    "DtdlInterface",
+    "DtdlProperty",
+    "DtdlRelationship",
+    "DtdlTelemetry",
+    "DtdlComponent",
+    "DtdlEnumSchema",
+    "DtdlMapSchema",
+    "DtdlObjectSchema",
+    "DtdlArraySchema",
+    "DtdlObjectField",
+    "DtdlEnumValue",
+    "DtdlMapKey",
+    "DtdlMapValue",
+    "DtdlLocalizableString",
+    "DtdlPrimitiveSchema",
+    "DtdlSchema",
+    "DtdlContent",
     # Type aliases
     "DigitalTwinId",
     "ComponentName",
@@ -76,14 +103,7 @@ __all__ = [
     "MessageId",
     "JobStatus",
     "QueryExpression",
-    "ETag",
-    # TypedDicts and utility types
-    "ModelDict",
     "JsonPatchOperation",
     "TelemetryPayload",
     "ErrorDict",
-    "ImportJobDict",
-    "DeleteJobDict",
-    "ModelDataDict",
-    "IncomingRelationshipDict",
 ]

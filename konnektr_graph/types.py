@@ -235,13 +235,585 @@ class BasicDigitalTwinComponent:
 
 
 # ============================================================================
-# Type Aliases - for backward compatibility and less strict typing
+# DTDL (Digital Twins Definition Language) Model Types - v3 & v4
 # ============================================================================
 
-# Model definition structure
-ModelDict = Dict[
-    str, Any
-]  # Contains: @id, @type, @context, displayName, contents, etc.
+# Localizable string support
+DtdlLocalizableString = Union[str, Dict[str, str]]  # string or {countryCode: string}
+
+# Primitive schema types
+DtdlPrimitiveSchema = Literal[
+    "boolean",
+    "date",
+    "dateTime",
+    "double",
+    "duration",
+    "float",
+    "integer",
+    "long",
+    "string",
+    "time",
+]
+
+
+@dataclass
+class DtdlEnumValue:
+    """A value in a DTDL enum schema."""
+
+    name: str
+    enumValue: Union[str, int]
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+    comment: Optional[str] = None
+    id: Optional[str] = None  # Represents @id in JSON
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlEnumValue":
+        return cls(
+            name=data["name"],
+            enumValue=data["enumValue"],
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+            comment=data.get("comment"),
+            id=data.get("@id"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "name": self.name,
+            "enumValue": self.enumValue,
+        }
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.id is not None:
+            result["@id"] = self.id
+        return result
+
+
+@dataclass
+class DtdlEnumSchema:
+    """A DTDL enum schema definition."""
+
+    type: Literal["Enum"]  # Represents @type in JSON
+    enumValues: List[DtdlEnumValue]
+    valueSchema: Literal["integer", "string"]
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlEnumSchema":
+        return cls(
+            type="Enum",
+            enumValues=[DtdlEnumValue.from_dict(v) for v in data.get("enumValues", [])],
+            valueSchema=data.get("valueSchema", "string"),
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "@type": self.type,
+            "enumValues": [v.to_dict() for v in self.enumValues],
+            "valueSchema": self.valueSchema,
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
+@dataclass
+class DtdlMapKey:
+    """Key definition for a DTDL map schema."""
+
+    name: str
+    schema: Literal["string"]
+    id: Optional[str] = None  # Represents @id in JSON
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+    comment: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapKey":
+        return cls(
+            name=data["name"],
+            schema="string",
+            id=data.get("@id"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+            comment=data.get("comment"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {"name": self.name, "schema": self.schema}
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        if self.comment is not None:
+            result["comment"] = self.comment
+        return result
+
+
+@dataclass
+class DtdlMapValue:
+    """Value definition for a DTDL map schema."""
+
+    name: str
+    schema: Union[str, Dict[str, Any]]  # Can be primitive string or complex schema
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapValue":
+        return cls(
+            name=data["name"],
+            schema=data["schema"],
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {"name": self.name, "schema": self.schema}
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
+@dataclass
+class DtdlMapSchema:
+    """A DTDL map schema definition."""
+
+    type: Literal["Map"]  # Represents @type in JSON
+    mapKey: DtdlMapKey
+    mapValue: DtdlMapValue
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapSchema":
+        return cls(
+            type="Map",
+            mapKey=DtdlMapKey.from_dict(data["mapKey"]),
+            mapValue=DtdlMapValue.from_dict(data["mapValue"]),
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "@type": self.type,
+            "mapKey": self.mapKey.to_dict(),
+            "mapValue": self.mapValue.to_dict(),
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
+@dataclass
+class DtdlObjectField:
+    """A field in a DTDL object schema."""
+
+    name: str
+    schema: Union[str, Dict[str, Any]]  # Can be primitive string or complex schema
+    id: Optional[str] = None  # Represents @id in JSON
+    type: Optional[Union[str, List[str]]] = None  # Represents @type in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlObjectField":
+        return cls(
+            name=data["name"],
+            schema=data["schema"],
+            id=data.get("@id"),
+            type=data.get("@type"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {"name": self.name, "schema": self.schema}
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.type is not None:
+            result["@type"] = self.type
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
+@dataclass
+class DtdlObjectSchema:
+    """A DTDL object schema definition."""
+
+    type: Union[Literal["Object"], List[str]]  # Represents @type in JSON
+    fields: List[DtdlObjectField]
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlObjectSchema":
+        return cls(
+            type=data.get("@type", "Object"),
+            fields=[DtdlObjectField.from_dict(f) for f in data.get("fields", [])],
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "@type": self.type,
+            "fields": [f.to_dict() for f in self.fields],
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
+@dataclass
+class DtdlArraySchema:
+    """A DTDL array schema definition."""
+
+    type: Literal["Array"]  # Represents @type in JSON
+    elementSchema: Union[
+        str, Dict[str, Any]
+    ]  # Can be primitive string or complex schema
+    id: Optional[str] = None  # Represents @id in JSON
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlArraySchema":
+        return cls(
+            type="Array",
+            elementSchema=data["elementSchema"],
+            id=data.get("@id"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "@type": self.type,
+            "elementSchema": self.elementSchema,
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        return result
+
+
+# Complex schema types
+DtdlComplexSchema = Union[
+    DtdlEnumSchema, DtdlMapSchema, DtdlObjectSchema, DtdlArraySchema
+]
+DtdlSchema = Union[DtdlComplexSchema, DtdlPrimitiveSchema, Dict[str, Any]]
+
+
+@dataclass
+class DtdlProperty:
+    """A DTDL property definition."""
+
+    name: str
+    schema: Union[str, Dict[str, Any]]  # Can be primitive string or complex schema
+    type: Union[Literal["Property"], List[str]]  # Represents @type in JSON
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+    unit: Optional[str] = None
+    writable: Optional[bool] = None
+    overrides: Optional[str] = None  # Overriding extension
+    annotates: Optional[str] = None  # Annotation extension
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlProperty":
+        return cls(
+            name=data["name"],
+            schema=data["schema"],
+            type=data.get("@type", "Property"),
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+            unit=data.get("unit"),
+            writable=data.get("writable"),
+            overrides=data.get("overrides"),
+            annotates=data.get("annotates"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "name": self.name,
+            "schema": self.schema,
+            "@type": self.type,
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        if self.unit is not None:
+            result["unit"] = self.unit
+        if self.writable is not None:
+            result["writable"] = self.writable
+        if self.overrides is not None:
+            result["overrides"] = self.overrides
+        if self.annotates is not None:
+            result["annotates"] = self.annotates
+        return result
+
+
+@dataclass
+class DtdlRelationship:
+    """A DTDL relationship definition."""
+
+    name: str
+    type: Literal["Relationship"]  # Represents @type in JSON
+    target: str
+    properties: List[DtdlProperty]
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlRelationship":
+        return cls(
+            name=data["name"],
+            type="Relationship",
+            target=data["target"],
+            properties=[DtdlProperty.from_dict(p) for p in data.get("properties", [])],
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "name": self.name,
+            "@type": self.type,
+            "target": self.target,
+            "properties": [p.to_dict() for p in self.properties],
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
+@dataclass
+class DtdlTelemetry:
+    """A DTDL telemetry definition."""
+
+    name: str
+    schema: Union[str, Dict[str, Any]]  # Can be primitive string or complex schema
+    type: Union[Literal["Telemetry"], List[str]]  # Represents @type in JSON
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+    unit: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlTelemetry":
+        return cls(
+            name=data["name"],
+            schema=data["schema"],
+            type=data.get("@type", "Telemetry"),
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+            unit=data.get("unit"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "name": self.name,
+            "schema": self.schema,
+            "@type": self.type,
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        if self.unit is not None:
+            result["unit"] = self.unit
+        return result
+
+
+@dataclass
+class DtdlComponent:
+    """A DTDL component definition."""
+
+    name: str
+    schema: str  # Reference to another Interface
+    type: Literal["Component"]  # Represents @type in JSON
+    id: Optional[str] = None  # Represents @id in JSON
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlComponent":
+        return cls(
+            name=data["name"],
+            schema=data["schema"],
+            type="Component",
+            id=data.get("@id"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "name": self.name,
+            "schema": self.schema,
+            "@type": self.type,
+        }
+        if self.id is not None:
+            result["@id"] = self.id
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        return result
+
+
+# Content can be any of these types
+DtdlContent = Union[
+    DtdlProperty, DtdlRelationship, DtdlTelemetry, DtdlComponent, Dict[str, Any]
+]
+
+
+@dataclass
+class DtdlInterface:
+    """
+    A DTDL Interface definition (v3 & v4).
+
+    This represents a complete Digital Twins model definition.
+    """
+
+    id: str  # Represents @id in JSON (e.g., "dtmi:com:example:Room;1")
+    type: Union[Literal["Interface"], List[str]]  # Represents @type in JSON
+    context: Optional[Union[str, List[str]]] = None  # Represents @context in JSON
+    contents: Optional[List[Dict[str, Any]]] = (
+        None  # Property, Relationship, Telemetry, Component
+    )
+    comment: Optional[str] = None
+    displayName: Optional[DtdlLocalizableString] = None
+    description: Optional[DtdlLocalizableString] = None
+    extends: Optional[Union[str, List[str]]] = None
+    # MQTT extension properties
+    telemetryTopic: Optional[str] = None
+    commandTopic: Optional[str] = None
+    payloadFormat: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DtdlInterface":
+        return cls(
+            id=data["@id"],
+            type=data.get("@type", "Interface"),
+            context=data.get("@context"),
+            contents=data.get("contents"),
+            comment=data.get("comment"),
+            displayName=data.get("displayName"),
+            description=data.get("description"),
+            extends=data.get("extends"),
+            telemetryTopic=data.get("telemetryTopic"),
+            commandTopic=data.get("commandTopic"),
+            payloadFormat=data.get("payloadFormat"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        result: Dict[str, Any] = {
+            "@id": self.id,
+            "@type": self.type,
+        }
+        if self.context is not None:
+            result["@context"] = self.context
+        if self.contents is not None:
+            result["contents"] = self.contents
+        if self.comment is not None:
+            result["comment"] = self.comment
+        if self.displayName is not None:
+            result["displayName"] = self.displayName
+        if self.description is not None:
+            result["description"] = self.description
+        if self.extends is not None:
+            result["extends"] = self.extends
+        if self.telemetryTopic is not None:
+            result["telemetryTopic"] = self.telemetryTopic
+        if self.commandTopic is not None:
+            result["commandTopic"] = self.commandTopic
+        if self.payloadFormat is not None:
+            result["payloadFormat"] = self.payloadFormat
+        return result
 
 
 # Telemetry payload
@@ -257,69 +829,3 @@ class ErrorDict(TypedDict, total=False):
     target: str
     details: List["ErrorDict"]
     innererror: "ErrorDict"
-
-
-# Import/Delete Job structures
-class ImportJobDict(TypedDict, total=False):
-    """TypedDict representing an import job."""
-
-    id: str
-    status: JobStatus
-    inputBlobUri: str
-    outputBlobUri: str
-    createdDateTime: str
-    lastActionDateTime: str
-    finishedDateTime: str
-    purgeDateTime: str
-    error: ErrorDict
-
-
-class DeleteJobDict(TypedDict, total=False):
-    """TypedDict representing a delete job."""
-
-    id: str
-    status: JobStatus
-    createdDateTime: str
-    lastActionDateTime: str
-    finishedDateTime: str
-    purgeDateTime: str
-    error: ErrorDict
-
-
-# Query result
-class QueryResult(TypedDict):
-    """TypedDict representing a query result item."""
-
-    # Query results can contain any JSON-serializable data
-    pass
-
-
-# Paged response
-class PagedResponse(TypedDict, total=False):
-    """TypedDict representing a paged API response."""
-
-    value: List[Any]
-    nextLink: str
-    continuationToken: str
-
-
-# Model data response (matches DigitalTwinsModelData from C#)
-class ModelDataDict(TypedDict, total=False):
-    """TypedDict representing model metadata and definition."""
-
-    id: str
-    description: str
-    displayName: str
-    decommissioned: bool
-    uploadTime: str
-    model: ModelDict
-
-
-# Incoming relationship response
-class IncomingRelationshipDict(TypedDict):
-    """TypedDict representing an incoming relationship."""
-
-    relationshipId: str
-    sourceId: str
-    relationshipName: str
-    relationshipLink: str
