@@ -2,6 +2,6 @@
 """
 Async Konnektr Graph SDK.
 """
-from .client import KonnektrGraphClient
+from .client import KonnektrGraphClient, AsyncPagedIterator
 
-__all__ = ["KonnektrGraphClient"]
+__all__ = ["KonnektrGraphClient", "AsyncPagedIterator"]

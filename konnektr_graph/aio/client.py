@@ -3,7 +3,18 @@
 Konnektr Graph SDK (Azure-free) - Asynchronous Client
 """
 import json
-from typing import Any, Dict, List, Mapping, Optional, Union, AsyncIterator
+from typing import (
+    Any,
+    AsyncIterator,
+    Dict,
+    Generic,
+    List,
+    Mapping,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import aiohttp
 
@@ -20,9 +31,27 @@ from ..models import (
     ImportJob,
     IncomingRelationship,
 )
+from ..types import (
+    BasicDigitalTwin,
+    BasicDigitalTwinComponent,
+    BasicRelationship,
+    ComponentName,
+    DigitalTwinId,
+    JobId,
+    JsonPatchOperation,
+    MessageId,
+    ModelDict,
+    ModelId,
+    QueryExpression,
+    RelationshipId,
+    RelationshipName,
+    TelemetryPayload,
+)
+
+T = TypeVar("T")
 
 
-class AsyncPagedIterator(AsyncIterator):
+class AsyncPagedIterator(AsyncIterator[T], Generic[T]):
     """
     Async iterator for handling paged responses.
     Supports both nextLink in body and x-ms-continuation in headers.
@@ -36,7 +65,7 @@ class AsyncPagedIterator(AsyncIterator):
         headers: Optional[Dict[str, str]] = None,
         json_data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
-        model_cls: Any = None,
+        model_cls: Optional[Type[T]] = None,
         items_key: str = "value",
     ):
         """
@@ -66,10 +95,10 @@ class AsyncPagedIterator(AsyncIterator):
         self._next_link = None
         self._first_page_fetched = False
 
-    def __aiter__(self):
+    def __aiter__(self) -> "AsyncPagedIterator[T]":
         return self
 
-    async def __anext__(self):
+    async def __anext__(self) -> T:
         if not self._first_page_fetched:
             await self._fetch_page(is_initial=True)
             self._first_page_fetched = True
@@ -227,24 +256,28 @@ class KonnektrGraphClient:
     # --- Digital Twins ---
 
     async def get_digital_twin(
-        self, digital_twin_id: str, **kwargs: Any
-    ) -> Dict[str, Any]:
+        self, digital_twin_id: DigitalTwinId, **kwargs: Any
+    ) -> BasicDigitalTwin:
         """
-        Get a digital twin.
+        Get a digital twin by ID.
 
         Args:
             digital_twin_id: The ID of the digital twin.
-            **kwargs: Additional request options.
+            **kwargs: Additional request parameters.
 
         Returns:
             The digital twin data.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}"
-        return await self._request("GET", url, **kwargs)
+        data = await self._request("GET", url)
+        return BasicDigitalTwin.from_dict(data)
 
     async def upsert_digital_twin(
-        self, digital_twin_id: str, digital_twin: Dict[str, Any], **kwargs: Any
-    ) -> Dict[str, Any]:
+        self,
+        digital_twin_id: DigitalTwinId,
+        digital_twin: BasicDigitalTwin,
+        **kwargs: Any,
+    ) -> BasicDigitalTwin:
         """
         Create or update a digital twin.
 
@@ -257,10 +290,14 @@ class KonnektrGraphClient:
             The created or updated digital twin data.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}"
-        return await self._request("PUT", url, json=digital_twin, **kwargs)
+        data = await self._request("PUT", url, json=digital_twin.to_dict(), **kwargs)  # type: ignore
+        return BasicDigitalTwin.from_dict(data)
 
     async def update_digital_twin(
-        self, digital_twin_id: str, json_patch: List[Dict[str, Any]], **kwargs: Any
+        self,
+        digital_twin_id: DigitalTwinId,
+        json_patch: List[JsonPatchOperation],
+        **kwargs: Any,
     ) -> None:
         """
         Update a digital twin (JSON Patch).
@@ -275,7 +312,9 @@ class KonnektrGraphClient:
         headers["Content-Type"] = "application/json-patch+json"
         await self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
-    async def delete_digital_twin(self, digital_twin_id: str, **kwargs: Any) -> None:
+    async def delete_digital_twin(
+        self, digital_twin_id: DigitalTwinId, **kwargs: Any
+    ) -> None:
         """
         Delete a digital twin.
 
@@ -289,8 +328,11 @@ class KonnektrGraphClient:
     # --- Components ---
 
     async def get_component(
-        self, digital_twin_id: str, component_name: str, **kwargs: Any
-    ) -> Dict[str, Any]:
+        self,
+        digital_twin_id: DigitalTwinId,
+        component_name: ComponentName,
+        **kwargs: Any,
+    ) -> BasicDigitalTwinComponent:
         """
         Get a component.
 
@@ -303,13 +345,14 @@ class KonnektrGraphClient:
             The component data.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/components/{component_name}"
-        return await self._request("GET", url, **kwargs)
+        data = await self._request("GET", url, **kwargs)
+        return BasicDigitalTwinComponent.from_dict(data)
 
     async def update_component(
         self,
-        digital_twin_id: str,
-        component_name: str,
-        json_patch: List[Dict[str, Any]],
+        digital_twin_id: DigitalTwinId,
+        component_name: ComponentName,
+        json_patch: List[JsonPatchOperation],
         **kwargs: Any,
     ) -> None:
         """
@@ -329,29 +372,33 @@ class KonnektrGraphClient:
     # --- Relationships ---
 
     async def get_relationship(
-        self, digital_twin_id: str, relationship_id: str, **kwargs: Any
-    ) -> Dict[str, Any]:
+        self,
+        digital_twin_id: DigitalTwinId,
+        relationship_id: RelationshipId,
+        **kwargs: Any,
+    ) -> BasicRelationship:
         """
-        Get a relationship.
+        Get a relationship by ID.
 
         Args:
-            digital_twin_id: The ID of the digital twin.
+            digital_twin_id: The ID of the source digital twin.
             relationship_id: The ID of the relationship.
-            **kwargs: Additional request options.
+            **kwargs: Additional request parameters.
 
         Returns:
             The relationship data.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
-        return await self._request("GET", url, **kwargs)
+        data = await self._request("GET", url)
+        return BasicRelationship.from_dict(data)
 
     async def upsert_relationship(
         self,
-        digital_twin_id: str,
-        relationship_id: str,
-        relationship: Dict[str, Any],
+        digital_twin_id: DigitalTwinId,
+        relationship_id: RelationshipId,
+        relationship: BasicRelationship,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> BasicRelationship:
         """
         Create or update a relationship.
 
@@ -365,13 +412,14 @@ class KonnektrGraphClient:
             The created or updated relationship data.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
-        return await self._request("PUT", url, json=relationship, **kwargs)
+        data = await self._request("PUT", url, json=relationship.to_dict(), **kwargs)
+        return BasicRelationship.from_dict(data)
 
     async def update_relationship(
         self,
-        digital_twin_id: str,
-        relationship_id: str,
-        json_patch: List[Dict[str, Any]],
+        digital_twin_id: DigitalTwinId,
+        relationship_id: RelationshipId,
+        json_patch: List[JsonPatchOperation],
         **kwargs: Any,
     ) -> None:
         """
@@ -389,7 +437,10 @@ class KonnektrGraphClient:
         await self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
     async def delete_relationship(
-        self, digital_twin_id: str, relationship_id: str, **kwargs: Any
+        self,
+        digital_twin_id: DigitalTwinId,
+        relationship_id: RelationshipId,
+        **kwargs: Any,
     ) -> None:
         """
         Delete a relationship.
@@ -404,10 +455,10 @@ class KonnektrGraphClient:
 
     def list_relationships(
         self,
-        digital_twin_id: str,
-        relationship_name: Optional[str] = None,
+        digital_twin_id: DigitalTwinId,
+        relationship_name: Optional[RelationshipName] = None,
         **kwargs: Any,
-    ) -> AsyncPagedIterator:
+    ) -> AsyncPagedIterator[BasicRelationship]:
         """
         List relationships for a digital twin.
 
@@ -424,11 +475,13 @@ class KonnektrGraphClient:
         if relationship_name:
             params["relationshipName"] = relationship_name
 
-        return AsyncPagedIterator(self, url, params=params, **kwargs)
+        return AsyncPagedIterator(
+            self, url, params=params, model_cls=BasicRelationship, **kwargs
+        )
 
     def list_incoming_relationships(
-        self, digital_twin_id: str, **kwargs: Any
-    ) -> AsyncPagedIterator:
+        self, digital_twin_id: DigitalTwinId, **kwargs: Any
+    ) -> AsyncPagedIterator[IncomingRelationship]:
         """
         List incoming relationships for a digital twin.
 
@@ -446,10 +499,10 @@ class KonnektrGraphClient:
 
     def query_twins(
         self,
-        query_expression: str,
+        query_expression: QueryExpression,
         max_items_per_page: Optional[int] = None,
         **kwargs: Any,
-    ) -> AsyncPagedIterator:
+    ) -> AsyncPagedIterator[Dict[str, Any]]:
         """
         Query digital twins.
 
@@ -475,7 +528,7 @@ class KonnektrGraphClient:
     # --- Models ---
 
     async def get_model(
-        self, model_id: str, include_model_definition: bool = False, **kwargs: Any
+        self, model_id: ModelId, include_model_definition: bool = False, **kwargs: Any
     ) -> DigitalTwinsModelData:
         """
         Get a model.
@@ -501,7 +554,7 @@ class KonnektrGraphClient:
         include_model_definition: bool = False,
         results_per_page: Optional[int] = None,
         **kwargs: Any,
-    ) -> AsyncPagedIterator:
+    ) -> AsyncPagedIterator[DigitalTwinsModelData]:
         """
         List models.
 
@@ -534,7 +587,7 @@ class KonnektrGraphClient:
         )
 
     async def create_models(
-        self, dtdl_models: List[Dict[str, Any]], **kwargs: Any
+        self, dtdl_models: List[ModelDict], **kwargs: Any
     ) -> List[DigitalTwinsModelData]:
         """
         Create models.
@@ -550,7 +603,7 @@ class KonnektrGraphClient:
         data = await self._request("POST", url, json=dtdl_models, **kwargs)
         return [DigitalTwinsModelData.from_dict(m) for m in data]
 
-    async def decommission_model(self, model_id: str, **kwargs: Any) -> None:
+    async def decommission_model(self, model_id: ModelId, **kwargs: Any) -> None:
         """
         Decommission a model.
 
@@ -565,7 +618,7 @@ class KonnektrGraphClient:
 
         await self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
-    async def delete_model(self, model_id: str, **kwargs: Any) -> None:
+    async def delete_model(self, model_id: ModelId, **kwargs: Any) -> None:
         """
         Delete a model.
 
@@ -600,7 +653,7 @@ class KonnektrGraphClient:
     async def search_twins(
         self,
         search_text: str,
-        model_id: Optional[str] = None,
+        model_id: Optional[ModelId] = None,
         limit: int = 10,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
@@ -626,9 +679,9 @@ class KonnektrGraphClient:
 
     async def publish_telemetry(
         self,
-        digital_twin_id: str,
-        telemetry: Dict[str, Any],
-        message_id: Optional[str] = None,
+        digital_twin_id: DigitalTwinId,
+        telemetry: TelemetryPayload,
+        message_id: Optional[MessageId] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -649,10 +702,10 @@ class KonnektrGraphClient:
 
     async def publish_component_telemetry(
         self,
-        digital_twin_id: str,
-        component_name: str,
-        telemetry: Dict[str, Any],
-        message_id: Optional[str] = None,
+        digital_twin_id: DigitalTwinId,
+        component_name: ComponentName,
+        telemetry: TelemetryPayload,
+        message_id: Optional[MessageId] = None,
         **kwargs: Any,
     ) -> None:
         """
@@ -674,7 +727,7 @@ class KonnektrGraphClient:
 
     # --- Import Jobs ---
 
-    def list_import_jobs(self, **kwargs: Any) -> AsyncPagedIterator:
+    def list_import_jobs(self, **kwargs: Any) -> AsyncPagedIterator[ImportJob]:
         """
         List import jobs.
 
@@ -687,7 +740,7 @@ class KonnektrGraphClient:
         url = f"{self.endpoint}/jobs/import"
         return AsyncPagedIterator(self, url, model_cls=ImportJob, **kwargs)
 
-    async def get_import_job(self, job_id: str, **kwargs: Any) -> ImportJob:
+    async def get_import_job(self, job_id: JobId, **kwargs: Any) -> ImportJob:
         """
         Get an import job.
 
@@ -703,7 +756,7 @@ class KonnektrGraphClient:
         return ImportJob.from_dict(data)
 
     async def create_import_job(
-        self, job_id: str, import_job: Dict[str, Any], **kwargs: Any
+        self, job_id: JobId, import_job: Dict[str, Any], **kwargs: Any
     ) -> ImportJob:
         """
         Create an import job.
@@ -720,7 +773,7 @@ class KonnektrGraphClient:
         data = await self._request("PUT", url, json=import_job, **kwargs)
         return ImportJob.from_dict(data)
 
-    async def delete_import_job(self, job_id: str, **kwargs: Any) -> None:
+    async def delete_import_job(self, job_id: JobId, **kwargs: Any) -> None:
         """
         Delete an import job.
 
@@ -731,7 +784,7 @@ class KonnektrGraphClient:
         url = f"{self.endpoint}/jobs/import/{job_id}"
         await self._request("DELETE", url, **kwargs)
 
-    async def cancel_import_job(self, job_id: str, **kwargs: Any) -> ImportJob:
+    async def cancel_import_job(self, job_id: JobId, **kwargs: Any) -> ImportJob:
         """
         Cancel an import job.
 
@@ -748,7 +801,7 @@ class KonnektrGraphClient:
 
     # --- Delete Jobs ---
 
-    def list_delete_jobs(self, **kwargs: Any) -> AsyncPagedIterator:
+    def list_delete_jobs(self, **kwargs: Any) -> AsyncPagedIterator[DeleteJob]:
         """
         List delete jobs.
 
@@ -761,7 +814,7 @@ class KonnektrGraphClient:
         url = f"{self.endpoint}/jobs/deletion"
         return AsyncPagedIterator(self, url, model_cls=DeleteJob, **kwargs)
 
-    async def get_delete_job(self, job_id: str, **kwargs: Any) -> DeleteJob:
+    async def get_delete_job(self, job_id: JobId, **kwargs: Any) -> DeleteJob:
         """
         Get a delete job.
 
@@ -777,7 +830,7 @@ class KonnektrGraphClient:
         return DeleteJob.from_dict(data)
 
     async def create_delete_job(
-        self, job_id: str, delete_job: Optional[Dict[str, Any]] = None, **kwargs: Any
+        self, job_id: JobId, delete_job: Optional[Dict[str, Any]] = None, **kwargs: Any
     ) -> DeleteJob:
         """
         Create a delete job.
