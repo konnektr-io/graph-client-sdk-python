@@ -602,7 +602,9 @@ class KonnektrGraphClient:
             A list of created model data.
         """
         url = f"{self.endpoint}/models"
-        data = await self._request("POST", url, json=dtdl_models, **kwargs)
+        data = await self._request(
+            "POST", url, json=[m.to_dict() for m in dtdl_models], **kwargs
+        )
         return [DigitalTwinsModelData.from_dict(m) for m in data]
 
     async def decommission_model(self, model_id: ModelId, **kwargs: Any) -> None:

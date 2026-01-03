@@ -7,8 +7,6 @@ from typing import (
     Any,
     Dict,
     Generic,
-    IO,
-    Iterable,
     Iterator,
     List,
     Optional,
@@ -370,7 +368,7 @@ class KonnektrGraphClient:
             The created or updated relationship data.
         """
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
-        response = self._request("PUT", url, json=relationship, **kwargs)
+        response = self._request("PUT", url, json=relationship.to_dict(), **kwargs)
         return response.json()
 
     def update_relationship(
@@ -567,7 +565,9 @@ class KonnektrGraphClient:
             A list of created model data.
         """
         url = f"{self.endpoint}/models"
-        response = self._request("POST", url, json=dtdl_models, **kwargs)
+        response = self._request(
+            "POST", url, json=[m.to_dict() for m in dtdl_models], **kwargs
+        )
         return [DigitalTwinsModelData.from_dict(m) for m in response.json()]
 
     def decommission_model(self, model_id: ModelId, **kwargs: Any) -> None:
