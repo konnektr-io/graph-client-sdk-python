@@ -210,15 +210,31 @@ class DigitalTwinsModelData:
                 DtdlInterface.from_dict(model_data) if model_data is not None else None
             ),
             bases=data.get("bases"),
-            properties=[DtdlProperty.from_dict(p) for p in data.get("properties", [])],
-            relationships=[
-                DtdlRelationship.from_dict(r) for r in data.get("relationships", [])
-            ],
-            components=[DtdlComponent.from_dict(c) for c in data.get("components", [])],
-            telemetries=[
-                DtdlTelemetry.from_dict(t) for t in data.get("telemetries", [])
-            ],
-            commands=[DtdlCommand.from_dict(c) for c in data.get("commands", [])],
+            properties=(
+                [DtdlProperty.from_dict(p) for p in data["properties"]]
+                if "properties" in data
+                else None
+            ),
+            relationships=(
+                [DtdlRelationship.from_dict(r) for r in data["relationships"]]
+                if "relationships" in data
+                else None
+            ),
+            components=(
+                [DtdlComponent.from_dict(c) for c in data["components"]]
+                if "components" in data
+                else None
+            ),
+            telemetries=(
+                [DtdlTelemetry.from_dict(t) for t in data["telemetries"]]
+                if "telemetries" in data
+                else None
+            ),
+            commands=(
+                [DtdlCommand.from_dict(c) for c in data["commands"]]
+                if "commands" in data
+                else None
+            ),
         )
 
     def to_dict(self) -> Dict[str, Any]:
