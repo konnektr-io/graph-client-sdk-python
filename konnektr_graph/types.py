@@ -850,11 +850,19 @@ class DtdlInterface:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlInterface":
         data = normalize_keys(data)
+        contents = data.get("contents")
+        if contents is not None:
+            if isinstance(contents, dict):
+                # Single object, normalize and wrap in list
+                contents = [normalize_keys(contents)]
+            elif isinstance(contents, list):
+                # List of objects, normalize each
+                contents = [normalize_keys(item) for item in contents]
         return cls(
             id=data["@id"],
             type=data.get("@type", "Interface"),
             context=data.get("@context"),
-            contents=data.get("contents"),
+            contents=contents,
             comment=data.get("comment"),
             displayName=data.get("displayName"),
             description=data.get("description"),
