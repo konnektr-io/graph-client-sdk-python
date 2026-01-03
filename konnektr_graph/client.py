@@ -367,6 +367,10 @@ class KonnektrGraphClient:
         Returns:
             The created or updated relationship data.
         """
+        if not relationship.relationshipId:
+            relationship.relationshipId = relationship_id
+        if not relationship.sourceId:
+            relationship.sourceId = digital_twin_id
         url = f"{self.endpoint}/digitaltwins/{digital_twin_id}/relationships/{relationship_id}"
         response = self._request("PUT", url, json=relationship.to_dict(), **kwargs)
         return response.json()
