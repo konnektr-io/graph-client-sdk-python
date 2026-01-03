@@ -255,9 +255,7 @@ class DigitalTwinsModelData:
         if self.upload_time is not None:
             result["uploadTime"] = self.upload_time
         if self.model is not None:
-            result["model"] = (
-                self.model.to_dict() if hasattr(self.model, "to_dict") else self.model
-            )
+            result["model"] = self.model.to_dict()
         if self.bases is not None:
             result["bases"] = self.bases
         if self.properties is not None:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "konnektr-graph"
-version = "0.2.6"
+version = "0.2.7"
 authors = [{ name = "Konnektr", email = "info@konnektr.io" }]
 description = "Konnektr Graph SDK for Python"
 readme = "README.md"
