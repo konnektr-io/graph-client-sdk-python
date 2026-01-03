@@ -3,8 +3,17 @@
 Type definitions and aliases for the Konnektr Graph SDK.
 """
 from dataclasses import dataclass, field
+from collections.abc import Mapping
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional, Protocol, TypedDict, Union
+
+
+# Utility: Normalize dict keys (strip single quotes)
+def normalize_keys(obj):
+    if isinstance(obj, dict):
+        return {k.strip("'"): normalize_keys(v) for k, v in obj.items()}
+    return obj
+
 
 # JSON types
 JsonValue = Union[str, int, float, bool, None, Dict[str, Any], List[Any]]
@@ -269,6 +278,7 @@ class DtdlEnumValue:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlEnumValue":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             enumValue=data["enumValue"],
@@ -308,6 +318,7 @@ class DtdlEnumSchema:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlEnumSchema":
+        data = normalize_keys(data)
         return cls(
             type="Enum",
             enumValues=[DtdlEnumValue.from_dict(v) for v in data.get("enumValues", [])],
@@ -348,6 +359,7 @@ class DtdlMapKey:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapKey":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             schema="string",
@@ -383,6 +395,7 @@ class DtdlMapValue:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapValue":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             schema=data["schema"],
@@ -419,6 +432,7 @@ class DtdlMapSchema:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapSchema":
+        data = normalize_keys(data)
         return cls(
             type="Map",
             mapKey=DtdlMapKey.from_dict(data["mapKey"]),
@@ -460,6 +474,7 @@ class DtdlObjectField:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlObjectField":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             schema=data["schema"],
@@ -498,6 +513,7 @@ class DtdlObjectSchema:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlObjectSchema":
+        data = normalize_keys(data)
         return cls(
             type=data.get("@type", "Object"),
             fields=[DtdlObjectField.from_dict(f) for f in data.get("fields", [])],
@@ -535,6 +551,7 @@ class DtdlArraySchema:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlArraySchema":
+        data = normalize_keys(data)
         return cls(
             type="Array",
             elementSchema=data["elementSchema"],
@@ -576,6 +593,7 @@ class DtdlProperty:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlProperty":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             schema=data["schema"],
@@ -630,6 +648,7 @@ class DtdlRelationship:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlRelationship":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             type="Relationship",
@@ -674,6 +693,7 @@ class DtdlTelemetry:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlTelemetry":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             schema=data["schema"],
@@ -718,6 +738,7 @@ class DtdlComponent:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlComponent":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             schema=data["schema"],
@@ -760,6 +781,7 @@ class DtdlCommand:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlCommand":
+        data = normalize_keys(data)
         return cls(
             name=data["name"],
             request=data.get("request"),
@@ -827,6 +849,7 @@ class DtdlInterface:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlInterface":
+        data = normalize_keys(data)
         return cls(
             id=data["@id"],
             type=data.get("@type", "Interface"),
