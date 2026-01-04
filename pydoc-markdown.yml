@@ -8,6 +8,5 @@ processors:
     documented_only: true
   - type: google
   - type: smart
-renderers:
-  - type: markdown
-    output_file: docs/api/api_reference.md
+renderer:
+  type: markdown
