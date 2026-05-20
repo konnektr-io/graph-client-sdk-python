@@ -603,14 +603,19 @@ class KonnektrGraphClient:
     def search_models(
         self,
         search_text: str,
+        vector: Optional[List[float]] = None,
         limit: int = 10,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         """
-        Search for DTDL models using semantic and keyword search.
+        Search for DTDL models using lexical and/or vector similarity.
+
+        Pass search_text for keyword/lexical search, vector for semantic search,
+        or both for hybrid search. If both are None/empty, returns all models up to limit.
 
         Args:
-            search_text: Search query (uses hybrid vector + keyword search).
+            search_text: Lexical search query (matches against id, displayName, description).
+            vector: Optional vector embedding for semantic similarity search.
             limit: Maximum number of results to return. Defaults to 10.
             **kwargs: Additional request options.
 
@@ -618,23 +623,30 @@ class KonnektrGraphClient:
             A list of matching model summaries.
         """
         url = f"{self.endpoint}/models/search"
-        body = {"searchText": search_text, "limit": limit}
+        body: Dict[str, Any] = {"query": search_text, "limit": limit}
+        if vector is not None:
+            body["vector"] = vector
         response = self._request("POST", url, json=body, **kwargs)
         return response.json()
 
     def search_twins(
         self,
-        search_text: str,
-        model_id: Optional[str] = None,
+        vector: List[float],
+        embedding_property: str = "embedding",
+        model_filter: Optional[str] = None,
         limit: int = 10,
         **kwargs: Any,
     ) -> List[Dict[str, Any]]:
         """
-        Search for digital twins using semantic and keyword search.
+        Search for digital twins using vector similarity and optional model filter.
+
+        The backend supports hybrid vector search on digital twins. Provide a vector
+        embedding for semantic similarity, optionally filtered by model ID.
 
         Args:
-            search_text: Search query.
-            model_id: Optional filter by model ID.
+            vector: Vector embedding for semantic similarity search.
+            embedding_property: Name of the twin property containing the embedding. Defaults to "embedding".
+            model_filter: Optional model ID to filter results by.
             limit: Maximum number of results to return. Defaults to 10.
             **kwargs: Additional request options.
 
@@ -642,9 +654,13 @@ class KonnektrGraphClient:
             A list of matching digital twins.
         """
         url = f"{self.endpoint}/digitaltwins/search"
-        body = {"searchText": search_text, "limit": limit}
-        if model_id:
-            body["modelId"] = model_id
+        body: Dict[str, Any] = {
+            "vector": vector,
+            "embeddingProperty": embedding_property,
+            "limit": limit,
+        }
+        if model_filter:
+            body["modelFilter"] = model_filter
         response = self._request("POST", url, json=body, **kwargs)
         return response.json()
 
