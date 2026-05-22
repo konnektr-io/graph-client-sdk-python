@@ -81,6 +81,12 @@ you can adapt `DefaultAzureCredential` to this SDK's `TokenProvider` interface.
 Install Azure Identity in your app:
 
 ```bash
+pip install "konnektr-graph[azure]"
+```
+
+Or install `azure-identity` directly if you prefer:
+
+```bash
 pip install azure-identity
 ```
 

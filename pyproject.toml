@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "konnektr-graph"
-version = "0.2.13"
+version = "0.2.14"
 authors = [{ name = "Konnektr", email = "info@konnektr.io" }]
 description = "Konnektr Graph SDK for Python"
 readme = "README.md"
@@ -21,6 +21,7 @@ dependencies = ["requests>=2.34.2", "aiohttp>=3.13.5"]
 
 [project.optional-dependencies]
 docs = ["pydoc-markdown[novella]>=4.8.2"]
+azure = ["azure-identity>=1.17.0"]
 
 [project.urls]
 "Homepage" = "https://github.com/konnektr-io/graph-client-sdk-python"
