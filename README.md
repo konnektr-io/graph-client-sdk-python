@@ -71,6 +71,64 @@ asyncio.run(main())
 - `ClientSecretCredential` / `AsyncClientSecretCredential`: Ideal for server-to-server scenarios.
 - `DeviceCodeCredential` / `AsyncDeviceCodeCredential`: Best for interactive CLI tools.
 - `StaticTokenCredential`: Use when you already have a valid access token.
+- `DefaultAzureCredentialAdapter` / `AsyncDefaultAzureCredentialAdapter`: Use Azure Identity credentials through the SDK auth protocol.
+
+## Using Azure Identity (`DefaultAzureCredential`)
+
+If your backend validates Azure AD tokens (e.g., ADT-compatible audience `https://digitaltwins.azure.net/`),
+you can adapt `DefaultAzureCredential` to this SDK's `TokenProvider` interface.
+
+Install Azure Identity in your app:
+
+```bash
+pip install azure-identity
+```
+
+### Sync
+
+```python
+from azure.identity import DefaultAzureCredential
+from konnektr_graph import KonnektrGraphClient
+from konnektr_graph.auth import DefaultAzureCredentialAdapter
+
+endpoint = "https://your-graph-endpoint"
+
+azure_cred = DefaultAzureCredential()
+cred = DefaultAzureCredentialAdapter(
+    azure_cred,
+    scope="https://digitaltwins.azure.net/.default",
+)
+
+client = KonnektrGraphClient(endpoint, cred)
+twin = client.get_digital_twin("my-twin-id")
+print(twin)
+```
+
+### Async
+
+```python
+import asyncio
+from azure.identity.aio import DefaultAzureCredential
+from konnektr_graph.aio import KonnektrGraphClient
+from konnektr_graph.auth import AsyncDefaultAzureCredentialAdapter
+
+async def main():
+    endpoint = "https://your-graph-endpoint"
+
+    azure_cred = DefaultAzureCredential()
+    cred = AsyncDefaultAzureCredentialAdapter(
+        azure_cred,
+        scope="https://digitaltwins.azure.net/.default",
+    )
+
+    async with KonnektrGraphClient(endpoint, cred) as client:
+        twin = await client.get_digital_twin("my-twin-id")
+        print(twin)
+
+    await azure_cred.close()
+
+asyncio.run(main())
+```
 
 ## License
 

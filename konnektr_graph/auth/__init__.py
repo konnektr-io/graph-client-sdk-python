@@ -9,6 +9,14 @@ from .device_code_credential import DeviceCodeCredential
 from .static_token_credential import StaticTokenCredential
 from .async_client_secret_credential import AsyncClientSecretCredential
 from .async_device_code_credential import AsyncDeviceCodeCredential
+from .azure_identity_credential_adapter import (
+    AzureIdentityCredentialAdapter,
+    DefaultAzureCredentialAdapter,
+)
+from .async_azure_identity_credential_adapter import (
+    AsyncAzureIdentityCredentialAdapter,
+    AsyncDefaultAzureCredentialAdapter,
+)
 
 __all__ = [
     "TokenProvider",
@@ -18,4 +26,8 @@ __all__ = [
     "StaticTokenCredential",
     "AsyncClientSecretCredential",
     "AsyncDeviceCodeCredential",
+    "AzureIdentityCredentialAdapter",
+    "DefaultAzureCredentialAdapter",
+    "AsyncAzureIdentityCredentialAdapter",
+    "AsyncDefaultAzureCredentialAdapter",
 ]
