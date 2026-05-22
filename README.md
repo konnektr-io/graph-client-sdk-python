@@ -58,7 +58,7 @@ async def main():
         client_id="...",
         client_secret="..."
     )
-    
+
     async with KonnektrGraphClient("https://your-graph-endpoint.konnektr.io", cred) as client:
         twin = await client.get_digital_twin("my-twin-id")
         print(twin)
