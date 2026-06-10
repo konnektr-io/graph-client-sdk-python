@@ -589,6 +589,27 @@ class KonnektrGraphClient:
 
         self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
 
+    def update_model_embedding(
+        self,
+        model_id: ModelId,
+        embedding: List[float],
+        **kwargs: Any,
+    ) -> None:
+        """
+        Update (or set) the embedding vector for a model.
+
+        Args:
+            model_id: The ID of the model.
+            embedding: The vector embedding (list of floats).
+            **kwargs: Additional request options.
+        """
+        url = f"{self.endpoint}/models/{model_id}"
+        json_patch: List[JsonPatchOperation] = [{"op": "add", "path": "/embedding", "value": embedding}]  # type: ignore
+        headers = kwargs.pop("headers", {})
+        headers["Content-Type"] = "application/json-patch+json"
+
+        self._request("PATCH", url, json=json_patch, headers=headers, **kwargs)
+
     def delete_model(self, model_id: ModelId, **kwargs: Any) -> None:
         """
         Delete a model.

@@ -3,7 +3,7 @@
 Konnektr Graph SDK models (Azure-free).
 """
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from .types import (
     DtdlCommand,
@@ -181,6 +181,7 @@ class DigitalTwinsModelData:
     decommissioned: bool = False
     upload_time: Optional[str] = None
     model: Optional[DtdlInterface] = None
+    embedding: Optional[List[float]] = None
     bases: Optional[list[str]] = None
     properties: Optional[list[DtdlProperty]] = None
     relationships: Optional[list[DtdlRelationship]] = None
@@ -206,6 +207,7 @@ class DigitalTwinsModelData:
             display_name=data.get("displayName"),
             decommissioned=data.get("decommissioned", False),
             upload_time=data.get("uploadTime"),
+            embedding=data.get("embedding"),
             model=(
                 DtdlInterface.from_dict(model_data) if model_data is not None else None
             ),
@@ -256,6 +258,8 @@ class DigitalTwinsModelData:
             result["uploadTime"] = self.upload_time
         if self.model is not None:
             result["model"] = self.model.to_dict()
+        if self.embedding is not None:
+            result["embedding"] = self.embedding
         if self.bases is not None:
             result["bases"] = self.bases
         if self.properties is not None:
