@@ -262,6 +262,13 @@ class TestDtdlProperty:
         assert p.name == "broken"
         assert p.schema == "string"
 
+    def test_relationship_from_dict_missing_target(self):
+        """Should not crash if relationship target is missing."""
+        data = {"name": "brokenRel", "@type": "Relationship"}
+        r = DtdlRelationship.from_dict(data)
+        assert r.name == "brokenRel"
+        assert r.target == ""
+
 
 class TestDtdlRelationship:
     def test_from_dict(self):

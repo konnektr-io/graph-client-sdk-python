@@ -58,11 +58,11 @@ class ImportJob:
             An ImportJob instance.
         """
         return cls(
-            id=data["id"],
-            status=data["status"],
-            input_blob_uri=data["inputBlobUri"],
-            output_blob_uri=data["outputBlobUri"],
-            created_date_time=data["createdDateTime"],
+            id=data.get("id", ""),
+            status=data.get("status", "notstarted"),
+            input_blob_uri=data.get("inputBlobUri", ""),
+            output_blob_uri=data.get("outputBlobUri", ""),
+            created_date_time=data.get("createdDateTime", ""),
             last_action_date_time=data.get("lastActionDateTime"),
             finished_date_time=data.get("finishedDateTime"),
             purge_date_time=data.get("purgeDateTime"),
@@ -129,9 +129,9 @@ class DeleteJob:
             A DeleteJob instance.
         """
         return cls(
-            id=data["id"],
-            status=data["status"],
-            created_date_time=data["createdDateTime"],
+            id=data.get("id", ""),
+            status=data.get("status", "notstarted"),
+            created_date_time=data.get("createdDateTime", ""),
             last_action_date_time=data.get("lastActionDateTime"),
             finished_date_time=data.get("finishedDateTime"),
             purge_date_time=data.get("purgeDateTime"),
@@ -202,7 +202,7 @@ class DigitalTwinsModelData:
         """
         model_data = data.get("model")
         return cls(
-            id=data["id"],
+            id=data.get("id", ""),
             description=data.get("description"),
             display_name=data.get("displayName"),
             decommissioned=data.get("decommissioned", False),
@@ -213,28 +213,28 @@ class DigitalTwinsModelData:
             ),
             bases=data.get("bases"),
             properties=(
-                [DtdlProperty.from_dict(p) for p in data["properties"]]
-                if "properties" in data
+                [DtdlProperty.from_dict(p) for p in data["properties"] if isinstance(p, dict)]
+                if "properties" in data and isinstance(data["properties"], list)
                 else None
             ),
             relationships=(
-                [DtdlRelationship.from_dict(r) for r in data["relationships"]]
-                if "relationships" in data
+                [DtdlRelationship.from_dict(r) for r in data["relationships"] if isinstance(r, dict)]
+                if "relationships" in data and isinstance(data["relationships"], list)
                 else None
             ),
             components=(
-                [DtdlComponent.from_dict(c) for c in data["components"]]
-                if "components" in data
+                [DtdlComponent.from_dict(c) for c in data["components"] if isinstance(c, dict)]
+                if "components" in data and isinstance(data["components"], list)
                 else None
             ),
             telemetries=(
-                [DtdlTelemetry.from_dict(t) for t in data["telemetries"]]
-                if "telemetries" in data
+                [DtdlTelemetry.from_dict(t) for t in data["telemetries"] if isinstance(t, dict)]
+                if "telemetries" in data and isinstance(data["telemetries"], list)
                 else None
             ),
             commands=(
-                [DtdlCommand.from_dict(c) for c in data["commands"]]
-                if "commands" in data
+                [DtdlCommand.from_dict(c) for c in data["commands"] if isinstance(c, dict)]
+                if "commands" in data and isinstance(data["commands"], list)
                 else None
             ),
         )

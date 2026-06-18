@@ -280,8 +280,8 @@ class DtdlEnumValue:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlEnumValue":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
-            enumValue=data["enumValue"],
+            name=data.get("name", ""),
+            enumValue=data.get("enumValue", 0),
             displayName=data.get("displayName"),
             description=data.get("description"),
             comment=data.get("comment"),
@@ -361,7 +361,7 @@ class DtdlMapKey:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapKey":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
+            name=data.get("name", ""),
             schema="string",
             id=data.get("@id"),
             displayName=data.get("displayName"),
@@ -397,7 +397,7 @@ class DtdlMapValue:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlMapValue":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
+            name=data.get("name", ""),
             schema=data.get("schema", "string"),
             id=data.get("@id"),
             comment=data.get("comment"),
@@ -476,7 +476,7 @@ class DtdlObjectField:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlObjectField":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
+            name=data.get("name", ""),
             schema=data.get("schema", "string"),
             id=data.get("@id"),
             type=data.get("@type"),
@@ -595,7 +595,7 @@ class DtdlProperty:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlProperty":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
+            name=data.get("name", ""),
             schema=data.get("schema", "string"),
             type=data.get("@type", "Property"),
             id=data.get("@id"),
@@ -650,9 +650,9 @@ class DtdlRelationship:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlRelationship":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
+            name=data.get("name", ""),
             type="Relationship",
-            target=data["target"],
+            target=data.get("target", ""),
             properties=[DtdlProperty.from_dict(p) for p in data.get("properties", [])],
             id=data.get("@id"),
             comment=data.get("comment"),
@@ -695,7 +695,7 @@ class DtdlTelemetry:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlTelemetry":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
+            name=data.get("name", ""),
             schema=data.get("schema", "string"),
             type=data.get("@type", "Telemetry"),
             id=data.get("@id"),
@@ -740,7 +740,7 @@ class DtdlComponent:
     def from_dict(cls, data: Dict[str, Any]) -> "DtdlComponent":
         data = normalize_keys(data)
         return cls(
-            name=data["name"],
+            name=data.get("name", ""),
             schema=data.get("schema", ""),
             type="Component",
             id=data.get("@id"),
@@ -859,7 +859,7 @@ class DtdlInterface:
                 # List of objects, normalize each
                 contents = [normalize_keys(item) for item in contents]
         return cls(
-            id=data["@id"],
+            id=data.get("@id", ""),
             type=data.get("@type", "Interface"),
             context=data.get("@context"),
             contents=contents,
