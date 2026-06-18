@@ -161,8 +161,12 @@ class AsyncPagedIterator(AsyncIterator[T], Generic[T]):
 
 
 class KonnektrGraphClient:
+
     def __init__(
-        self, endpoint: str, credential: Union[AsyncTokenProvider, TokenProvider]
+        self,
+        endpoint: str,
+        credential: Union[AsyncTokenProvider, TokenProvider],
+        api_version: Optional[str] = None,
     ):
         """
         Initialize the Konnektr Graph Client.
@@ -175,6 +179,7 @@ class KonnektrGraphClient:
             endpoint = "https://" + endpoint
         self.endpoint = endpoint.rstrip("/")
         self.credential = credential
+        self.api_version = api_version
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def __aenter__(self):
@@ -220,6 +225,14 @@ class KonnektrGraphClient:
         # Ensure content type is set
         if "json" in kwargs and "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
+
+        # Add api-version to params if provided
+        params = kwargs.get("params")
+        if params is None:
+            params = {}
+        if self.api_version:
+            params["api-version"] = self.api_version
+        kwargs["params"] = params
 
         async with session.request(method, url, headers=headers, **kwargs) as response:
             if not response.ok:

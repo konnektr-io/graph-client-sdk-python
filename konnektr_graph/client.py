@@ -159,7 +159,7 @@ class PagedIterator(Iterator[T], Generic[T]):
 
 class KonnektrGraphClient:
 
-    def __init__(self, endpoint: str, credential: TokenProvider):
+    def __init__(self, endpoint: str, credential: TokenProvider, api_version: Optional[str] = None):
         """
         Initialize the Konnektr Graph Client.
 
@@ -171,6 +171,7 @@ class KonnektrGraphClient:
             endpoint = "https://" + endpoint
         self.endpoint = endpoint.rstrip("/")
         self.credential = credential
+        self.api_version = api_version
 
     def _request(
         self, method: str, url: str, headers: Optional[Dict[str, str]] = None, **kwargs
@@ -182,6 +183,14 @@ class KonnektrGraphClient:
         # Ensure content type is set if json body is present and not set
         if "json" in kwargs and "Content-Type" not in headers:
             headers["Content-Type"] = "application/json"
+
+        # Add api-version to params if provided
+        params = kwargs.get("params")
+        if params is None:
+            params = {}
+        if self.api_version:
+            params["api-version"] = self.api_version
+        kwargs["params"] = params
 
         response = requests.request(method, url, headers=headers, **kwargs)
 
