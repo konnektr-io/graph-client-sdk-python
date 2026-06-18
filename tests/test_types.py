@@ -255,6 +255,13 @@ class TestDtdlProperty:
         restored = DtdlProperty.from_dict(as_dict)
         assert restored.name == "humidity"
 
+    def test_from_dict_missing_schema(self):
+        """Should not crash if schema is missing, defaulting to 'string'."""
+        data = {"name": "broken", "@type": "Property"}
+        p = DtdlProperty.from_dict(data)
+        assert p.name == "broken"
+        assert p.schema == "string"
+
 
 class TestDtdlRelationship:
     def test_from_dict(self):

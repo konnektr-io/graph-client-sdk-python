@@ -398,7 +398,7 @@ class DtdlMapValue:
         data = normalize_keys(data)
         return cls(
             name=data["name"],
-            schema=data["schema"],
+            schema=data.get("schema", "string"),
             id=data.get("@id"),
             comment=data.get("comment"),
             displayName=data.get("displayName"),
@@ -477,7 +477,7 @@ class DtdlObjectField:
         data = normalize_keys(data)
         return cls(
             name=data["name"],
-            schema=data["schema"],
+            schema=data.get("schema", "string"),
             id=data.get("@id"),
             type=data.get("@type"),
             comment=data.get("comment"),
@@ -554,7 +554,7 @@ class DtdlArraySchema:
         data = normalize_keys(data)
         return cls(
             type="Array",
-            elementSchema=data["elementSchema"],
+            elementSchema=data.get("elementSchema", "string"),
             id=data.get("@id"),
         )
 
@@ -596,7 +596,7 @@ class DtdlProperty:
         data = normalize_keys(data)
         return cls(
             name=data["name"],
-            schema=data["schema"],
+            schema=data.get("schema", "string"),
             type=data.get("@type", "Property"),
             id=data.get("@id"),
             comment=data.get("comment"),
@@ -696,7 +696,7 @@ class DtdlTelemetry:
         data = normalize_keys(data)
         return cls(
             name=data["name"],
-            schema=data["schema"],
+            schema=data.get("schema", "string"),
             type=data.get("@type", "Telemetry"),
             id=data.get("@id"),
             comment=data.get("comment"),
@@ -741,7 +741,7 @@ class DtdlComponent:
         data = normalize_keys(data)
         return cls(
             name=data["name"],
-            schema=data["schema"],
+            schema=data.get("schema", ""),
             type="Component",
             id=data.get("@id"),
             comment=data.get("comment"),
