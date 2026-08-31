@@ -180,6 +180,20 @@ class TestAsyncClientModels:
         assert len(models) == 1
 
     @pytest.mark.asyncio
+    async def test_delete_all_models(self, aclient):
+        mock_resp = MagicMock()
+        mock_resp.ok = True
+        mock_resp.status = 204
+        mock_resp.headers = {}
+        mock_resp.__aenter__.return_value = mock_resp
+        mock_session = MagicMock()
+        mock_session.request.return_value = mock_resp
+        aclient._session = mock_session
+        assert await aclient.delete_all_models() is None
+        assert mock_session.request.call_args[0][0] == "DELETE"
+        assert mock_session.request.call_args[0][1] == f"{aclient.endpoint}/models"
+
+    @pytest.mark.asyncio
     async def test_search_models_with_vector(self, aclient):
         mock_resp = MagicMock()
         mock_resp.ok = True
