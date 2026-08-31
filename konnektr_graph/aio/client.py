@@ -671,6 +671,19 @@ class KonnektrGraphClient:
         url = f"{self.endpoint}/models/{model_id}"
         await self._request("DELETE", url, **kwargs)
 
+    async def delete_all_models(self, **kwargs: Any) -> None:
+        """
+        Delete all models in the graph.
+
+        This removes every model definition at once (``DELETE /models``). Twins that
+        reference the deleted models are not removed, so use with care.
+
+        Args:
+            **kwargs: Additional request options.
+        """
+        url = f"{self.endpoint}/models"
+        await self._request("DELETE", url, **kwargs)
+
     async def search_models(
         self,
         search_text: str,

@@ -231,6 +231,14 @@ class TestKonnektrGraphClientModels:
             client.delete_model("dtmi:com:example:Room;1")
             assert mock_req.call_args[0][0] == "DELETE"
 
+    def test_delete_all_models(self, credential, endpoint):
+        client = KonnektrGraphClient(endpoint, credential)
+        mock_resp = make_mock_response()
+        with patch.object(requests, "request", return_value=mock_resp) as mock_req:
+            client.delete_all_models()
+            assert mock_req.call_args[0][0] == "DELETE"
+            assert mock_req.call_args[0][1] == f"{client.endpoint}/models"
+
     def test_search_models(self, credential, endpoint):
         client = KonnektrGraphClient(endpoint, credential)
         mock_resp = make_mock_response(json_data=[{"id": "m1"}])

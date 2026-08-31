@@ -457,6 +457,23 @@ Delete a model.
 - `model_id` - The ID of the model.
 - `**kwargs` - Additional request options.
 
+<a id="konnektr_graph.aio.client.KonnektrGraphClient.delete_all_models"></a>
+
+#### delete\_all\_models
+
+```python
+async def delete_all_models(**kwargs: Any) -> None
+```
+
+Delete all models in the graph.
+
+This removes every model definition at once (``DELETE /models``). Twins that
+reference the deleted models are not removed, so use with care.
+
+**Arguments**:
+
+- `**kwargs` - Additional request options.
+
 <a id="konnektr_graph.aio.client.KonnektrGraphClient.search_models"></a>
 
 #### search\_models
@@ -1527,6 +1544,23 @@ Delete a model.
 **Arguments**:
 
 - `model_id` - The ID of the model.
+- `**kwargs` - Additional request options.
+
+<a id="konnektr_graph.client.KonnektrGraphClient.delete_all_models"></a>
+
+#### delete\_all\_models
+
+```python
+def delete_all_models(**kwargs: Any) -> None
+```
+
+Delete all models in the graph.
+
+This removes every model definition at once (``DELETE /models``). Twins that
+reference the deleted models are not removed, so use with care.
+
+**Arguments**:
+
 - `**kwargs` - Additional request options.
 
 <a id="konnektr_graph.client.KonnektrGraphClient.search_models"></a>
