@@ -366,3 +366,102 @@ class TestDtdlInterface:
         }
         iface = DtdlInterface.from_dict(data)
         assert iface.displayName == {"en": "Room"}
+
+
+class TestDtdlInterfaceSchemas:
+    """DTDL v4 'schemas' (reusable named complex schemas) + languageVersion/annotations."""
+
+    def _v4_sensor_model(self) -> dict:
+        # A DTDL v4 interface with two reusable named schemas referenced by DTMI.
+        return {
+            "@id": "dtmi:com:example:Sensor;1",
+            "@type": "Interface",
+            "@context": "dtmi:dtdl:context;4",
+            "languageVersion": 1,
+            "annotations": {"recommended": True},
+            "contents": [
+                {
+                    "@type": "Property",
+                    "name": "status",
+                    "schema": "dtmi:com:example:Status;1",
+                },
+                {
+                    "@type": "Property",
+                    "name": "location",
+                    "schema": "dtmi:com:example:Geo;1",
+                },
+            ],
+            "schemas": [
+                {
+                    "@id": "dtmi:com:example:Status;1",
+                    "@type": "Enum",
+                    "valueSchema": "string",
+                    "enumValues": [
+                        {"name": "On", "enumValue": "on"},
+                        {"name": "Off", "enumValue": "off"},
+                    ],
+                },
+                {
+                    "@id": "dtmi:com:example:Geo;1",
+                    "@type": "Object",
+                    "fields": [
+                        {"name": "lat", "schema": "double"},
+                        {"name": "lon", "schema": "double"},
+                    ],
+                },
+            ],
+        }
+
+    def test_from_dict_parses_schemas(self):
+        iface = DtdlInterface.from_dict(self._v4_sensor_model())
+        assert iface.schemas is not None
+        assert len(iface.schemas) == 2
+        by_id = {s["@id"]: s for s in iface.schemas}
+        assert "dtmi:com:example:Status;1" in by_id
+        assert by_id["dtmi:com:example:Status;1"]["@type"] == "Enum"
+        assert (
+            by_id["dtmi:com:example:Status;1"]["enumValues"][0]["name"] == "On"
+        )
+        assert by_id["dtmi:com:example:Geo;1"]["fields"][1]["name"] == "lon"
+
+    def test_to_dict_emits_schemas(self):
+        iface = DtdlInterface.from_dict(self._v4_sensor_model())
+        d = iface.to_dict()
+        assert "schemas" in d
+        assert len(d["schemas"]) == 2
+        # Contents still reference the named schemas by DTMI (lossless).
+        schemas_referenced = {c["schema"] for c in d["contents"]}
+        assert "dtmi:com:example:Status;1" in schemas_referenced
+
+    def test_roundtrip_preserves_schemas(self):
+        original = self._v4_sensor_model()
+        iface = DtdlInterface.from_dict(original)
+        restored = DtdlInterface.from_dict(iface.to_dict())
+        assert restored.schemas == iface.schemas
+        assert restored.contents == iface.contents
+        assert restored.languageVersion == 1
+        assert restored.annotations == {"recommended": True}
+
+    def test_single_schema_dict_is_wrapped(self):
+        data = {
+            "@id": "dtmi:com:example:Thing;1",
+            "@type": "Interface",
+            "schemas": {
+                "@id": "dtmi:com:example:Color;1",
+                "@type": "Enum",
+                "valueSchema": "string",
+                "enumValues": [{"name": "Red", "enumValue": "red"}],
+            },
+        }
+        iface = DtdlInterface.from_dict(data)
+        assert isinstance(iface.schemas, list)
+        assert len(iface.schemas) == 1
+        assert iface.schemas[0]["@id"] == "dtmi:com:example:Color;1"
+
+    def test_backward_compat_omits_schemas_when_absent(self):
+        data = {"@id": "dtmi:com:example:Room;1", "@type": "Interface"}
+        iface = DtdlInterface.from_dict(data)
+        assert iface.schemas is None
+        assert "schemas" not in iface.to_dict()
+        assert iface.languageVersion is None
+        assert iface.annotations is None

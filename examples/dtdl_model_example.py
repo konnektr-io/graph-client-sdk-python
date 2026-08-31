@@ -305,6 +305,57 @@ def create_specialized_room_model() -> DtdlInterface:
     return conference_room
 
 
+# Example 8: DTDL v4 reusable named schemas ("schemas" collection)
+def create_model_with_reusable_schemas() -> DtdlInterface:
+    """
+    DTDL v4 lets an Interface declare named, reusable complex schemas in a
+    top-level "schemas" array, referenced from anywhere inside the interface
+    (and from other interfaces) by DTMI. This was previously unsupported by the
+    SDK — DtdlInterface now round-trips the "schemas" field losslessly.
+    """
+    sensor_model = DtdlInterface(
+        id="dtmi:com:example:Sensor;1",
+        type="Interface",
+        context="dtmi:dtdl:context;4",
+        languageVersion=1,
+        contents=[
+            DtdlProperty(
+                name="status",
+                schema="dtmi:com:example:Status;1",  # references a named schema
+                type="Property",
+                displayName="Sensor Status",
+            ).to_dict(),
+            DtdlProperty(
+                name="location",
+                schema="dtmi:com:example:Geo;1",  # references a named schema
+                type="Property",
+                displayName="Sensor Location",
+            ).to_dict(),
+        ],
+        schemas=[
+            {
+                "@id": "dtmi:com:example:Status;1",
+                "@type": "Enum",
+                "valueSchema": "string",
+                "enumValues": [
+                    {"name": "On", "enumValue": "on"},
+                    {"name": "Off", "enumValue": "off"},
+                ],
+            },
+            {
+                "@id": "dtmi:com:example:Geo;1",
+                "@type": "Object",
+                "fields": [
+                    {"name": "lat", "schema": "double"},
+                    {"name": "lon", "schema": "double"},
+                ],
+            },
+        ],
+    )
+
+    return sensor_model
+
+
 if __name__ == "__main__":
     print("=== DTDL Model Examples ===\n")
 
@@ -333,6 +384,12 @@ if __name__ == "__main__":
     print("5. Creating Conference Room (extends Room)...")
     conf_room = create_specialized_room_model()
     print(f"   Extends: {conf_room.extends}\n")
+
+    # Example 8: DTDL v4 reusable named schemas
+    print("8. Creating Sensor model with DTDL v4 reusable 'schemas'...")
+    v4_sensor = create_model_with_reusable_schemas()
+    assert v4_sensor.schemas is not None and len(v4_sensor.schemas) == 2
+    print(f"   Declared {len(v4_sensor.schemas)} reusable schemas (Status, Geo)\n")
 
     print("✅ All DTDL models created successfully!")
     print("✅ Full type safety for DTDL v3 and v4")
