@@ -516,6 +516,7 @@ class KonnektrGraphClient:
     def query_twins(
         self,
         query_expression: QueryExpression,
+        query_parameters: Optional[Dict[str, Any]] = None,
         max_items_per_page: Optional[int] = None,
         **kwargs: Any,
     ) -> AsyncPagedIterator[Dict[str, Any]]:
@@ -524,6 +525,10 @@ class KonnektrGraphClient:
 
         Args:
             query_expression: The query expression.
+            query_parameters: Optional parameters for parameterized Cypher queries.
+                Keys correspond to `$param` placeholders in the query string.
+                Values can be primitives, objects, or arrays. Mirrors the
+                `parameters` field of the server's `/query` endpoint.
             max_items_per_page: Optional maximum items per page.
             **kwargs: Additional request options.
 
@@ -535,7 +540,9 @@ class KonnektrGraphClient:
         if max_items_per_page:
             headers["max-items-per-page"] = str(max_items_per_page)
 
-        body = {"query": query_expression}
+        body: Dict[str, Any] = {"query": query_expression}
+        if query_parameters is not None:
+            body["parameters"] = query_parameters
 
         return AsyncPagedIterator(
             self, url, method="POST", json_data=body, headers=headers, **kwargs

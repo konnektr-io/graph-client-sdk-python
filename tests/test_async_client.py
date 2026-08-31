@@ -149,6 +149,41 @@ class TestAsyncClientQuery:
                 results.append(item)
             assert len(results) == 1
 
+    @pytest.mark.asyncio
+    async def test_query_twins_passes_parameters(self, aclient):
+        """`query_parameters` must be forwarded as `parameters` in the POST body."""
+        mock_data = {"value": []}
+        params = {"model": "dtmi:com:example:Room;1", "minTemp": 20}
+        captured = {}
+
+        async def fake_request_raw(method, url, **kwargs):
+            captured["json"] = kwargs.get("json")
+            return mock_data, {}
+
+        with patch.object(aclient, "_request_raw", side_effect=fake_request_raw):
+            async for _ in aclient.query_twins(
+                "SELECT * FROM digitaltwins WHERE $model = $model",
+                query_parameters=params,
+            ):
+                pass
+        assert captured["json"]["query"] == "SELECT * FROM digitaltwins WHERE $model = $model"
+        assert captured["json"]["parameters"] == params
+
+    @pytest.mark.asyncio
+    async def test_query_twins_without_parameters_omits_key(self, aclient):
+        mock_data = {"value": []}
+        captured = {}
+
+        async def fake_request_raw(method, url, **kwargs):
+            captured["json"] = kwargs.get("json")
+            return mock_data, {}
+
+        with patch.object(aclient, "_request_raw", side_effect=fake_request_raw):
+            async for _ in aclient.query_twins("SELECT * FROM digitaltwins"):
+                pass
+        assert "parameters" not in captured["json"]
+        assert captured["json"]["query"] == "SELECT * FROM digitaltwins"
+
 
 class TestAsyncClientModels:
     @pytest.mark.asyncio

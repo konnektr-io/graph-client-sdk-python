@@ -42,6 +42,13 @@ print(twin)
 # Query Twins with auto-pagination
 for twin in client.query_twins("SELECT * FROM digitaltwins"):
     print(twin)
+
+# Query with parameters (forwarded to the server's `parameters` field,
+# bound to `$name` placeholders in the query)
+params = {"model": "dtmi:com:example:Room;1", "minTemp": 20}
+query = "SELECT * FROM digitaltwins WHERE $model = $model AND temperature > $minTemp"
+for twin in client.query_twins(query, query_parameters=params):
+    print(twin)
 ```
 
 ### Asynchronous Client
