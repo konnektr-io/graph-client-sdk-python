@@ -4,6 +4,12 @@
 
 Konnektr Graph SDK (Azure-free).
 
+<a id="konnektr_graph.aio"></a>
+
+# konnektr\_graph.aio
+
+Async Konnektr Graph SDK.
+
 <a id="konnektr_graph.aio.client"></a>
 
 # konnektr\_graph.aio.client
@@ -62,8 +68,9 @@ class KonnektrGraphClient()
 #### \_\_init\_\_
 
 ```python
-def __init__(endpoint: str, credential: Union[AsyncTokenProvider,
-                                              TokenProvider])
+def __init__(endpoint: str,
+             credential: Union[AsyncTokenProvider, TokenProvider],
+             api_version: Optional[str] = None)
 ```
 
 Initialize the Konnektr Graph Client.
@@ -442,6 +449,23 @@ Decommission a model.
 - `model_id` - The ID of the model.
 - `**kwargs` - Additional request options.
 
+<a id="konnektr_graph.aio.client.KonnektrGraphClient.update_model_embedding"></a>
+
+#### update\_model\_embedding
+
+```python
+async def update_model_embedding(model_id: ModelId, embedding: List[float],
+                                 **kwargs: Any) -> None
+```
+
+Update (or set) the embedding vector for a model.
+
+**Arguments**:
+
+- `model_id` - The ID of the model.
+- `embedding` - The vector embedding (list of floats).
+- `**kwargs` - Additional request options.
+
 <a id="konnektr_graph.aio.client.KonnektrGraphClient.delete_model"></a>
 
 #### delete\_model
@@ -480,15 +504,20 @@ reference the deleted models are not removed, so use with care.
 
 ```python
 async def search_models(search_text: str,
+                        vector: Optional[List[float]] = None,
                         limit: int = 10,
                         **kwargs: Any) -> List[Dict[str, Any]]
 ```
 
-Search for DTDL models using semantic and keyword search.
+Search for DTDL models using lexical and/or vector similarity.
+
+Pass search_text for keyword/lexical search, vector for semantic search,
+or both for hybrid search. If both are None/empty, returns all models up to limit.
 
 **Arguments**:
 
-- `search_text` - Search query (uses hybrid vector + keyword search).
+- `search_text` - Lexical search query (matches against id, displayName, description).
+- `vector` - Optional vector embedding for semantic similarity search.
 - `limit` - Maximum number of results to return. Defaults to 10.
 - `**kwargs` - Additional request options.
   
@@ -502,18 +531,23 @@ Search for DTDL models using semantic and keyword search.
 #### search\_twins
 
 ```python
-async def search_twins(search_text: str,
-                       model_id: Optional[ModelId] = None,
+async def search_twins(vector: List[float],
+                       embedding_property: str = "embedding",
+                       model_filter: Optional[str] = None,
                        limit: int = 10,
                        **kwargs: Any) -> List[Dict[str, Any]]
 ```
 
-Search for digital twins using semantic and keyword search.
+Search for digital twins using vector similarity and optional model filter.
+
+The backend supports hybrid vector search on digital twins. Provide a vector
+embedding for semantic similarity, optionally filtered by model ID.
 
 **Arguments**:
 
-- `search_text` - Search query.
-- `model_id` - Optional filter by model ID.
+- `vector` - Vector embedding for semantic similarity search.
+- `embedding_property` - Name of the twin property containing the embedding. Defaults to "embedding".
+- `model_filter` - Optional model ID to filter results by.
 - `limit` - Maximum number of results to return. Defaults to 10.
 - `**kwargs` - Additional request options.
   
@@ -722,11 +756,50 @@ Create a delete job.
 
   The created delete job data.
 
-<a id="konnektr_graph.aio"></a>
+<a id="konnektr_graph.auth"></a>
 
-# konnektr\_graph.aio
+# konnektr\_graph.auth
 
-Async Konnektr Graph SDK.
+Authentication modules for Konnektr Graph SDK.
+
+<a id="konnektr_graph.auth.async_azure_identity_credential_adapter"></a>
+
+# konnektr\_graph.auth.async\_azure\_identity\_credential\_adapter
+
+Async adapter for using Azure SDK credentials (e.g., DefaultAzureCredential)
+with Konnektr Graph's AsyncTokenProvider protocol.
+
+<a id="konnektr_graph.auth.async_azure_identity_credential_adapter.AsyncAzureIdentityCredentialAdapter"></a>
+
+## AsyncAzureIdentityCredentialAdapter Objects
+
+```python
+class AsyncAzureIdentityCredentialAdapter()
+```
+
+Adapts an Azure SDK AsyncTokenCredential to Konnektr Graph's AsyncTokenProvider.
+
+Works with async credentials from ``azure-identity.aio`` such as
+``DefaultAzureCredential`` and ``ManagedIdentityCredential``.
+
+**Arguments**:
+
+- `credential`: Azure async credential object implementing ``get_token(scope)``.
+- `scope`: OAuth scope to request. For ADT-compatible APIs, use
+``https://digitaltwins.azure.net/.default``.
+
+<a id="konnektr_graph.auth.async_azure_identity_credential_adapter.AsyncDefaultAzureCredentialAdapter"></a>
+
+## AsyncDefaultAzureCredentialAdapter Objects
+
+```python
+class AsyncDefaultAzureCredentialAdapter(AsyncAzureIdentityCredentialAdapter)
+```
+
+Backward-compatible alias for AsyncAzureIdentityCredentialAdapter.
+
+This class name is intentionally specific to highlight the common use case
+with ``azure.identity.aio.DefaultAzureCredential``.
 
 <a id="konnektr_graph.auth.async_client_secret_credential"></a>
 
@@ -841,6 +914,46 @@ Get HTTP headers including the Authorization header.
 **Returns**:
 
 Dictionary with Authorization header.
+
+<a id="konnektr_graph.auth.azure_identity_credential_adapter"></a>
+
+# konnektr\_graph.auth.azure\_identity\_credential\_adapter
+
+Adapter for using Azure SDK credentials (e.g., DefaultAzureCredential)
+with Konnektr Graph's TokenProvider protocol.
+
+<a id="konnektr_graph.auth.azure_identity_credential_adapter.AzureIdentityCredentialAdapter"></a>
+
+## AzureIdentityCredentialAdapter Objects
+
+```python
+class AzureIdentityCredentialAdapter()
+```
+
+Adapts an Azure SDK TokenCredential to Konnektr Graph's TokenProvider.
+
+Works with credentials from ``azure-identity`` such as
+``DefaultAzureCredential``, ``ClientSecretCredential``,
+and ``ManagedIdentityCredential``.
+
+**Arguments**:
+
+- `credential`: Azure credential object implementing ``get_token(scope)``.
+- `scope`: OAuth scope to request. For ADT-compatible APIs, use
+``https://digitaltwins.azure.net/.default``.
+
+<a id="konnektr_graph.auth.azure_identity_credential_adapter.DefaultAzureCredentialAdapter"></a>
+
+## DefaultAzureCredentialAdapter Objects
+
+```python
+class DefaultAzureCredentialAdapter(AzureIdentityCredentialAdapter)
+```
+
+Backward-compatible alias for AzureIdentityCredentialAdapter.
+
+This class name is intentionally specific to highlight the common use case
+with ``azure.identity.DefaultAzureCredential``.
 
 <a id="konnektr_graph.auth.client_secret_credential"></a>
 
@@ -1098,12 +1211,6 @@ def is_expired() -> bool
 
 Check if the token has expired.
 
-<a id="konnektr_graph.auth"></a>
-
-# konnektr\_graph.auth
-
-Authentication modules for Konnektr Graph SDK.
-
 <a id="konnektr_graph.client"></a>
 
 # konnektr\_graph.client
@@ -1162,7 +1269,9 @@ class KonnektrGraphClient()
 #### \_\_init\_\_
 
 ```python
-def __init__(endpoint: str, credential: TokenProvider)
+def __init__(endpoint: str,
+             credential: TokenProvider,
+             api_version: Optional[str] = None)
 ```
 
 Initialize the Konnektr Graph Client.
@@ -1531,6 +1640,23 @@ Decommission a model.
 - `model_id` - The ID of the model.
 - `**kwargs` - Additional request options.
 
+<a id="konnektr_graph.client.KonnektrGraphClient.update_model_embedding"></a>
+
+#### update\_model\_embedding
+
+```python
+def update_model_embedding(model_id: ModelId, embedding: List[float],
+                           **kwargs: Any) -> None
+```
+
+Update (or set) the embedding vector for a model.
+
+**Arguments**:
+
+- `model_id` - The ID of the model.
+- `embedding` - The vector embedding (list of floats).
+- `**kwargs` - Additional request options.
+
 <a id="konnektr_graph.client.KonnektrGraphClient.delete_model"></a>
 
 #### delete\_model
@@ -1569,15 +1695,20 @@ reference the deleted models are not removed, so use with care.
 
 ```python
 def search_models(search_text: str,
+                  vector: Optional[List[float]] = None,
                   limit: int = 10,
                   **kwargs: Any) -> List[Dict[str, Any]]
 ```
 
-Search for DTDL models using semantic and keyword search.
+Search for DTDL models using lexical and/or vector similarity.
+
+Pass search_text for keyword/lexical search, vector for semantic search,
+or both for hybrid search. If both are None/empty, returns all models up to limit.
 
 **Arguments**:
 
-- `search_text` - Search query (uses hybrid vector + keyword search).
+- `search_text` - Lexical search query (matches against id, displayName, description).
+- `vector` - Optional vector embedding for semantic similarity search.
 - `limit` - Maximum number of results to return. Defaults to 10.
 - `**kwargs` - Additional request options.
   
@@ -1591,18 +1722,23 @@ Search for DTDL models using semantic and keyword search.
 #### search\_twins
 
 ```python
-def search_twins(search_text: str,
-                 model_id: Optional[str] = None,
+def search_twins(vector: List[float],
+                 embedding_property: str = "embedding",
+                 model_filter: Optional[str] = None,
                  limit: int = 10,
                  **kwargs: Any) -> List[Dict[str, Any]]
 ```
 
-Search for digital twins using semantic and keyword search.
+Search for digital twins using vector similarity and optional model filter.
+
+The backend supports hybrid vector search on digital twins. Provide a vector
+embedding for semantic similarity, optionally filtered by model ID.
 
 **Arguments**:
 
-- `search_text` - Search query.
-- `model_id` - Optional filter by model ID.
+- `vector` - Vector embedding for semantic similarity search.
+- `embedding_property` - Name of the twin property containing the embedding. Defaults to "embedding".
+- `model_filter` - Optional model ID to filter results by.
 - `limit` - Maximum number of results to return. Defaults to 10.
 - `**kwargs` - Additional request options.
   
