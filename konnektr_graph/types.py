@@ -830,6 +830,14 @@ class DtdlInterface:
     A DTDL Interface definition (v3 & v4).
 
     This represents a complete Digital Twins model definition.
+
+    In addition to the common id/type/context metadata, an Interface carries
+    ``contents`` (the properties, relationships, telemetry, components and
+    commands) and a ``schemas`` collection of named, reusable complex schemas
+    (Enum / Map / Object / Array) that can be referenced by DTMI from anywhere
+    inside the interface (DTDL v4). ``contents`` and ``schemas`` are stored as
+    raw ``dict`` objects so that every field — including ones not explicitly
+    modelled here — round-trips losslessly through ``from_dict`` / ``to_dict``.
     """
 
     id: str  # Represents @id in JSON (e.g., "dtmi:com:example:Room;1")
@@ -838,10 +846,17 @@ class DtdlInterface:
     contents: Optional[List[Dict[str, Any]]] = (
         None  # Property, Relationship, Telemetry, Component
     )
+    schemas: Optional[List[Dict[str, Any]]] = (
+        None  # Named, reusable complex schemas (Enum/Map/Object/Array) — DTDL v4
+    )
     comment: Optional[str] = None
     displayName: Optional[DtdlLocalizableString] = None
     description: Optional[DtdlLocalizableString] = None
     extends: Optional[Union[str, List[str]]] = None
+    # DTDL v4 language version (1 for context;4). Absent means "use context default".
+    languageVersion: Optional[Union[int, str]] = None
+    # DTDL v4 annotations extension (a map of annotation-name -> value).
+    annotations: Optional[Dict[str, Any]] = None
     # MQTT extension properties
     telemetryTopic: Optional[str] = None
     commandTopic: Optional[str] = None
@@ -858,15 +873,26 @@ class DtdlInterface:
             elif isinstance(contents, list):
                 # List of objects, normalize each
                 contents = [normalize_keys(item) for item in contents]
+        schemas = data.get("schemas")
+        if schemas is not None:
+            if isinstance(schemas, dict):
+                # Single object, normalize and wrap in list
+                schemas = [normalize_keys(schemas)]
+            elif isinstance(schemas, list):
+                # List of objects, normalize each
+                schemas = [normalize_keys(item) for item in schemas]
         return cls(
             id=data.get("@id", ""),
             type=data.get("@type", "Interface"),
             context=data.get("@context"),
             contents=contents,
+            schemas=schemas,
             comment=data.get("comment"),
             displayName=data.get("displayName"),
             description=data.get("description"),
             extends=data.get("extends"),
+            languageVersion=data.get("languageVersion"),
+            annotations=data.get("annotations"),
             telemetryTopic=data.get("telemetryTopic"),
             commandTopic=data.get("commandTopic"),
             payloadFormat=data.get("payloadFormat"),
@@ -881,6 +907,8 @@ class DtdlInterface:
             result["@context"] = self.context
         if self.contents is not None:
             result["contents"] = self.contents
+        if self.schemas is not None:
+            result["schemas"] = self.schemas
         if self.comment is not None:
             result["comment"] = self.comment
         if self.displayName is not None:
@@ -889,6 +917,10 @@ class DtdlInterface:
             result["description"] = self.description
         if self.extends is not None:
             result["extends"] = self.extends
+        if self.languageVersion is not None:
+            result["languageVersion"] = self.languageVersion
+        if self.annotations is not None:
+            result["annotations"] = self.annotations
         if self.telemetryTopic is not None:
             result["telemetryTopic"] = self.telemetryTopic
         if self.commandTopic is not None:
