@@ -187,6 +187,26 @@ class TestKonnektrGraphClientQuery:
             call_headers = mock_req.call_args[1]["headers"]
             assert call_headers["max-items-per-page"] == "50"
 
+    def test_query_twins_passes_parameters(self, credential, endpoint):
+        """The `query_parameters` dict must be forwarded as `parameters` in the POST body."""
+        client = KonnektrGraphClient(endpoint, credential)
+        mock_resp = make_mock_response(json_data={"value": []})
+        params = {"model": "dtmi:com:example:Room;1", "minTemp": 20}
+        with patch.object(requests, "request", return_value=mock_resp) as mock_req:
+            list(client.query_twins("SELECT * FROM digitaltwins WHERE $model = $model", query_parameters=params))
+            call_body = mock_req.call_args[1]["json"]
+            assert call_body["query"] == "SELECT * FROM digitaltwins WHERE $model = $model"
+            assert call_body["parameters"] == params
+
+    def test_query_twins_without_parameters_omits_key(self, credential, endpoint):
+        client = KonnektrGraphClient(endpoint, credential)
+        mock_resp = make_mock_response(json_data={"value": []})
+        with patch.object(requests, "request", return_value=mock_resp) as mock_req:
+            list(client.query_twins("SELECT * FROM digitaltwins"))
+            call_body = mock_req.call_args[1]["json"]
+            assert "parameters" not in call_body
+            assert call_body["query"] == "SELECT * FROM digitaltwins"
+
 
 class TestKonnektrGraphClientModels:
     def test_get_model(self, credential, endpoint):
