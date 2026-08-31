@@ -348,6 +348,7 @@ List incoming relationships for a digital twin.
 
 ```python
 def query_twins(query_expression: QueryExpression,
+                query_parameters: Optional[Dict[str, Any]] = None,
                 max_items_per_page: Optional[int] = None,
                 **kwargs: Any) -> AsyncPagedIterator[Dict[str, Any]]
 ```
@@ -357,6 +358,10 @@ Query digital twins.
 **Arguments**:
 
 - `query_expression` - The query expression.
+- `query_parameters` - Optional parameters for parameterized Cypher queries.
+  Keys correspond to `$param` placeholders in the query string.
+  Values can be primitives, objects, or arrays. Mirrors the
+  `parameters` field of the server's `/query` endpoint.
 - `max_items_per_page` - Optional maximum items per page.
 - `**kwargs` - Additional request options.
   
@@ -1538,6 +1543,7 @@ List incoming relationships for a digital twin.
 
 ```python
 def query_twins(query_expression: QueryExpression,
+                query_parameters: Optional[Dict[str, Any]] = None,
                 max_items_per_page: Optional[int] = None,
                 **kwargs: Any) -> PagedIterator[Dict[str, Any]]
 ```
@@ -1547,6 +1553,10 @@ Query digital twins.
 **Arguments**:
 
 - `query_expression` - The query expression.
+- `query_parameters` - Optional parameters for parameterized Cypher queries.
+  Keys correspond to `$param` placeholders in the query string.
+  Values can be primitives, objects, or arrays. Mirrors the
+  `parameters` field of the server's `/query` endpoint.
 - `max_items_per_page` - Optional maximum items per page.
 - `**kwargs` - Additional request options.
   
@@ -2782,6 +2792,14 @@ class DtdlInterface()
 A DTDL Interface definition (v3 & v4).
 
 This represents a complete Digital Twins model definition.
+
+In addition to the common id/type/context metadata, an Interface carries
+``contents`` (the properties, relationships, telemetry, components and
+commands) and a ``schemas`` collection of named, reusable complex schemas
+(Enum / Map / Object / Array) that can be referenced by DTMI from anywhere
+inside the interface (DTDL v4). ``contents`` and ``schemas`` are stored as
+raw ``dict`` objects so that every field — including ones not explicitly
+modelled here — round-trips losslessly through ``from_dict`` / ``to_dict``.
 
 <a id="konnektr_graph.types.DtdlInterface.id"></a>
 

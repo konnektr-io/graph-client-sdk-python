@@ -39,14 +39,15 @@ client = KonnektrGraphClient("https://your-graph-endpoint.konnektr.io", cred)
 twin = client.get_digital_twin("my-twin-id")
 print(twin)
 
-# Query Twins with auto-pagination
-for twin in client.query_twins("SELECT * FROM digitaltwins"):
+# Query Twins with auto-pagination (Cypher)
+query = "MATCH (t:Twin) RETURN t"
+for twin in client.query_twins(query):
     print(twin)
 
-# Query with parameters (forwarded to the server's `parameters` field,
-# bound to `$name` placeholders in the query)
+# Query with parameters (Cypher + `$name` placeholders, forwarded to the
+# server's `parameters` field; only Cypher supports query parameters)
 params = {"model": "dtmi:com:example:Room;1", "minTemp": 20}
-query = "SELECT * FROM digitaltwins WHERE $model = $model AND temperature > $minTemp"
+query = "MATCH (t:Twin) WHERE t.`$metadata`.`$model` = $model AND temperature > $minTemp RETURN t"
 for twin in client.query_twins(query, query_parameters=params):
     print(twin)
 ```
