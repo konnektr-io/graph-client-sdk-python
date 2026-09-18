@@ -6,6 +6,7 @@ from konnektr_graph.exceptions import (
     KonnektrGraphError,
     ResourceExistsError,
     ResourceNotFoundError,
+    ServiceUnavailableError,
     ValidationError,
 )
 
@@ -64,3 +65,12 @@ class TestValidationError:
     def test_creation(self):
         err = ValidationError("invalid input")
         assert err.status_code is None
+
+
+class TestServiceUnavailableError:
+    def test_inheritance(self):
+        assert issubclass(ServiceUnavailableError, HttpResponseError)
+
+    def test_creation(self):
+        err = ServiceUnavailableError("pgvector is not installed", 503)
+        assert err.status_code == 503

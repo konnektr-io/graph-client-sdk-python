@@ -37,6 +37,17 @@ class AuthenticationError(HttpResponseError):
     pass
 
 
+class ServiceUnavailableError(HttpResponseError):
+    """Raised when the service cannot serve the request (503).
+
+    For scoped vector memory search this means the backing database does not
+    have the pgvector extension installed (capability error). Use
+    ``get_memory_search_capability()`` to probe availability beforehand.
+    """
+
+    pass
+
+
 class ValidationError(KonnektrGraphError):
     """Raised when input validation fails."""
 

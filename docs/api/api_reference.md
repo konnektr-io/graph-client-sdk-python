@@ -561,6 +561,139 @@ embedding for semantic similarity, optionally filtered by model ID.
 
   A list of matching digital twins.
 
+<a id="konnektr_graph.aio.client.KonnektrGraphClient.search_memory"></a>
+
+#### search\_memory
+
+```python
+async def search_memory(vector: List[float],
+                        embedding_property: str = "embedding",
+                        limit: int = 10,
+                        model_ids: Optional[List[str]] = None,
+                        property_filters: Optional[Dict[str, str]] = None,
+                        related_twin_id: Optional[str] = None,
+                        expected_dimension: Optional[int] = None,
+                        excerpt_length: Optional[int] = None,
+                        **kwargs: Any) -> List[MemorySearchResult]
+```
+
+Search twin memory with scoped vector similarity (server-side filtering).
+
+Wraps ``POST /digitaltwins/memory-search``. Scope predicates (model
+allow-list, property equality filters, related-twin predicate) are
+applied by the server in the database *before* nearest-neighbour
+ranking and ``LIMIT`` — the ranking never sees out-of-scope records.
+Environment, user, and privacy scoping is expressed through
+``property_filters`` (caller-managed twin properties, e.g.
+``{"environmentId": "env-1", "userId": "user-9"}``) and enforced
+server-side. This method performs no client-side post-filtering: use
+the dedicated endpoint instead of filtering broad search results
+locally.
+
+**Arguments**:
+
+- `vector` - Query embedding for semantic similarity search.
+- `embedding_property` - Name of the twin property containing the
+  embedding. Defaults to "embedding".
+- `limit` - Maximum number of ranked records to return (1..100).
+  Defaults to 10.
+- `model_ids` - Optional allow-list of twin model IDs; only twins
+  conforming to one of these models are ranked.
+- `property_filters` - Optional caller-managed scope predicates as
+  twin-property equality filters (e.g. environment or owner keys).
+- `related_twin_id` - Optional twin ID; only twins related to this twin
+  are ranked.
+- `expected_dimension` - Optional expected embedding dimensionality;
+  must equal the query-vector length.
+- `excerpt_length` - Optional maximum excerpt characters per record
+  (1..4000).
+- `**kwargs` - Additional request options.
+  
+
+**Returns**:
+
+  Ranked memory records (closest first) as MemorySearchResult.
+  
+
+**Raises**:
+
+- `ValidationError` - Client-side constraint violated, or the server
+  rejected the request (400).
+- `AuthenticationError` - Authorization failure (401/403).
+- `ServiceUnavailableError` - pgvector is not installed on the backing
+  database (503 capability error).
+- `HttpResponseError` - Transport or other HTTP failure.
+
+<a id="konnektr_graph.aio.client.KonnektrGraphClient.ensure_memory_search_index"></a>
+
+#### ensure\_memory\_search\_index
+
+```python
+async def ensure_memory_search_index(dimension: int,
+                                     embedding_property: str = "embedding",
+                                     m: Optional[int] = None,
+                                     ef_construction: Optional[int] = None,
+                                     **kwargs: Any) -> MemorySearchIndex
+```
+
+Create the HNSW index backing scoped vector memory search (idempotent).
+
+Wraps ``POST /digitaltwins/memory-search/index``. The dimension must
+match the stored embedding vectors.
+
+**Arguments**:
+
+- `dimension` - Dimensionality of the stored embeddings.
+- `embedding_property` - Twin property holding the stored embedding.
+  Defaults to "embedding".
+- `m` - Optional HNSW ``m`` parameter (2..100). Omit for the server default.
+- `ef_construction` - Optional HNSW ``ef_construction`` parameter
+  (4..1000). Omit for the server default.
+- `**kwargs` - Additional request options.
+  
+
+**Returns**:
+
+  The memory search index (name and dimension).
+  
+
+**Raises**:
+
+- `ValidationError` - Client-side constraint violated, or the server
+  rejected the request (400).
+- `AuthenticationError` - Authorization failure (401/403).
+- `ServiceUnavailableError` - pgvector is not installed (503).
+- `HttpResponseError` - Transport or other HTTP failure.
+
+<a id="konnektr_graph.aio.client.KonnektrGraphClient.get_memory_search_capability"></a>
+
+#### get\_memory\_search\_capability
+
+```python
+async def get_memory_search_capability(**kwargs: Any
+                                       ) -> MemorySearchCapability
+```
+
+Report whether the backing database can serve scoped vector memory search.
+
+Wraps ``GET /digitaltwins/memory-search/capability``. Search and index
+operations return a 503 capability error when pgvector is unavailable.
+
+**Arguments**:
+
+- `**kwargs` - Additional request options.
+  
+
+**Returns**:
+
+  The memory search capability report.
+  
+
+**Raises**:
+
+- `AuthenticationError` - Authorization failure (401/403).
+- `HttpResponseError` - Transport or other HTTP failure.
+
 <a id="konnektr_graph.aio.client.KonnektrGraphClient.publish_telemetry"></a>
 
 #### publish\_telemetry
@@ -1757,6 +1890,138 @@ embedding for semantic similarity, optionally filtered by model ID.
 
   A list of matching digital twins.
 
+<a id="konnektr_graph.client.KonnektrGraphClient.search_memory"></a>
+
+#### search\_memory
+
+```python
+def search_memory(vector: List[float],
+                  embedding_property: str = "embedding",
+                  limit: int = 10,
+                  model_ids: Optional[List[str]] = None,
+                  property_filters: Optional[Dict[str, str]] = None,
+                  related_twin_id: Optional[str] = None,
+                  expected_dimension: Optional[int] = None,
+                  excerpt_length: Optional[int] = None,
+                  **kwargs: Any) -> List[MemorySearchResult]
+```
+
+Search twin memory with scoped vector similarity (server-side filtering).
+
+Wraps ``POST /digitaltwins/memory-search``. Scope predicates (model
+allow-list, property equality filters, related-twin predicate) are
+applied by the server in the database *before* nearest-neighbour
+ranking and ``LIMIT`` — the ranking never sees out-of-scope records.
+Environment, user, and privacy scoping is expressed through
+``property_filters`` (caller-managed twin properties, e.g.
+``{"environmentId": "env-1", "userId": "user-9"}``) and enforced
+server-side. This method performs no client-side post-filtering: use
+the dedicated endpoint instead of filtering broad search results
+locally.
+
+**Arguments**:
+
+- `vector` - Query embedding for semantic similarity search.
+- `embedding_property` - Name of the twin property containing the
+  embedding. Defaults to "embedding".
+- `limit` - Maximum number of ranked records to return (1..100).
+  Defaults to 10.
+- `model_ids` - Optional allow-list of twin model IDs; only twins
+  conforming to one of these models are ranked.
+- `property_filters` - Optional caller-managed scope predicates as
+  twin-property equality filters (e.g. environment or owner keys).
+- `related_twin_id` - Optional twin ID; only twins related to this twin
+  are ranked.
+- `expected_dimension` - Optional expected embedding dimensionality;
+  must equal the query-vector length.
+- `excerpt_length` - Optional maximum excerpt characters per record
+  (1..4000).
+- `**kwargs` - Additional request options.
+  
+
+**Returns**:
+
+  Ranked memory records (closest first) as MemorySearchResult.
+  
+
+**Raises**:
+
+- `ValidationError` - Client-side constraint violated, or the server
+  rejected the request (400).
+- `AuthenticationError` - Authorization failure (401/403).
+- `ServiceUnavailableError` - pgvector is not installed on the backing
+  database (503 capability error).
+- `HttpResponseError` - Transport or other HTTP failure.
+
+<a id="konnektr_graph.client.KonnektrGraphClient.ensure_memory_search_index"></a>
+
+#### ensure\_memory\_search\_index
+
+```python
+def ensure_memory_search_index(dimension: int,
+                               embedding_property: str = "embedding",
+                               m: Optional[int] = None,
+                               ef_construction: Optional[int] = None,
+                               **kwargs: Any) -> MemorySearchIndex
+```
+
+Create the HNSW index backing scoped vector memory search (idempotent).
+
+Wraps ``POST /digitaltwins/memory-search/index``. The dimension must
+match the stored embedding vectors.
+
+**Arguments**:
+
+- `dimension` - Dimensionality of the stored embeddings.
+- `embedding_property` - Twin property holding the stored embedding.
+  Defaults to "embedding".
+- `m` - Optional HNSW ``m`` parameter (2..100). Omit for the server default.
+- `ef_construction` - Optional HNSW ``ef_construction`` parameter
+  (4..1000). Omit for the server default.
+- `**kwargs` - Additional request options.
+  
+
+**Returns**:
+
+  The memory search index (name and dimension).
+  
+
+**Raises**:
+
+- `ValidationError` - Client-side constraint violated, or the server
+  rejected the request (400).
+- `AuthenticationError` - Authorization failure (401/403).
+- `ServiceUnavailableError` - pgvector is not installed (503).
+- `HttpResponseError` - Transport or other HTTP failure.
+
+<a id="konnektr_graph.client.KonnektrGraphClient.get_memory_search_capability"></a>
+
+#### get\_memory\_search\_capability
+
+```python
+def get_memory_search_capability(**kwargs: Any) -> MemorySearchCapability
+```
+
+Report whether the backing database can serve scoped vector memory search.
+
+Wraps ``GET /digitaltwins/memory-search/capability``. Search and index
+operations return a 503 capability error when pgvector is unavailable.
+
+**Arguments**:
+
+- `**kwargs` - Additional request options.
+  
+
+**Returns**:
+
+  The memory search capability report.
+  
+
+**Raises**:
+
+- `AuthenticationError` - Authorization failure (401/403).
+- `HttpResponseError` - Transport or other HTTP failure.
+
 <a id="konnektr_graph.client.KonnektrGraphClient.publish_telemetry"></a>
 
 #### publish\_telemetry
@@ -2013,6 +2278,20 @@ class AuthenticationError(HttpResponseError)
 
 Raised when authentication fails (401/403).
 
+<a id="konnektr_graph.exceptions.ServiceUnavailableError"></a>
+
+## ServiceUnavailableError Objects
+
+```python
+class ServiceUnavailableError(HttpResponseError)
+```
+
+Raised when the service cannot serve the request (503).
+
+For scoped vector memory search this means the backing database does not
+have the pgvector extension installed (capability error). Use
+``get_memory_search_capability()`` to probe availability beforehand.
+
 <a id="konnektr_graph.exceptions.ValidationError"></a>
 
 ## ValidationError Objects
@@ -2194,6 +2473,227 @@ Convert the DigitalTwinsModelData instance to a dictionary.
 **Returns**:
 
   A dictionary representation of the DigitalTwinsModelData.
+
+<a id="konnektr_graph.models.MEMORY_SEARCH_MAX_LIMIT"></a>
+
+#### MEMORY\_SEARCH\_MAX\_LIMIT
+
+Maximum number of ranked records a single memory search may request (1..100).
+
+<a id="konnektr_graph.models.MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS"></a>
+
+#### MEMORY\_SEARCH\_MAX\_VECTOR\_DIMENSIONS
+
+Maximum supported query-vector dimensionality (HNSW index limit).
+
+<a id="konnektr_graph.models.MEMORY_SEARCH_MAX_EXCERPT_LENGTH"></a>
+
+#### MEMORY\_SEARCH\_MAX\_EXCERPT\_LENGTH
+
+Maximum excerpt characters per memory-search record (1..4000).
+
+<a id="konnektr_graph.models.validate_memory_search_options"></a>
+
+#### validate\_memory\_search\_options
+
+```python
+def validate_memory_search_options(
+        vector: List[float],
+        embedding_property: str = "embedding",
+        limit: int = 10,
+        model_ids: Optional[List[str]] = None,
+        property_filters: Optional[Dict[str, str]] = None,
+        related_twin_id: Optional[str] = None,
+        expected_dimension: Optional[int] = None,
+        excerpt_length: Optional[int] = None) -> None
+```
+
+Validate scoped memory-search arguments client-side.
+
+Mirrors the server bounds; server validation remains authoritative.
+
+**Raises**:
+
+- `ValidationError` - If any argument violates its constraint.
+
+<a id="konnektr_graph.models.validate_memory_search_index_options"></a>
+
+#### validate\_memory\_search\_index\_options
+
+```python
+def validate_memory_search_index_options(
+        dimension: int,
+        embedding_property: str = "embedding",
+        m: Optional[int] = None,
+        ef_construction: Optional[int] = None) -> None
+```
+
+Validate memory-search HNSW index arguments client-side.
+
+**Raises**:
+
+- `ValidationError` - If any argument violates its constraint.
+
+<a id="konnektr_graph.models.MemorySearchResult"></a>
+
+## MemorySearchResult Objects
+
+```python
+@dataclass
+class MemorySearchResult()
+```
+
+A single ranked record from scoped vector memory search.
+
+Scope predicates (model allow-list, property equality filters, related-twin
+predicate) are applied by the server in the database *before*
+nearest-neighbour ranking and ``LIMIT`` — the ranking never sees
+out-of-scope records.
+
+**Attributes**:
+
+- `id` - Stable twin ID ($dtId).
+- `model_id` - Twin model ID ($metadata.$model), when known.
+- `distance` - L2 distance to the query vector. Lower values rank first.
+- `excerpt` - Bounded JSON excerpt of the twin's properties. The embedding
+  vector itself is excluded; fetch the full twin via
+  ``get_digital_twin`` when needed.
+- `last_updated_on` - Last update time of the twin, when known (ISO 8601).
+
+<a id="konnektr_graph.models.MemorySearchResult.from_dict"></a>
+
+#### from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: Dict[str, Any]) -> "MemorySearchResult"
+```
+
+Create a MemorySearchResult instance from a dictionary.
+
+**Arguments**:
+
+- `data` - A dictionary containing the memory search result data
+  (camelCase wire shape).
+  
+
+**Returns**:
+
+  A MemorySearchResult instance.
+
+<a id="konnektr_graph.models.MemorySearchResult.to_dict"></a>
+
+#### to\_dict
+
+```python
+def to_dict() -> Dict[str, Any]
+```
+
+Convert the MemorySearchResult instance to a dictionary.
+
+**Returns**:
+
+  A dictionary representation of the MemorySearchResult (camelCase).
+
+<a id="konnektr_graph.models.MemorySearchCapability"></a>
+
+## MemorySearchCapability Objects
+
+```python
+@dataclass
+class MemorySearchCapability()
+```
+
+Capability report for scoped vector memory search.
+
+**Attributes**:
+
+- `vector_search_available` - True when the pgvector extension is installed
+  and memory search can be served.
+
+<a id="konnektr_graph.models.MemorySearchCapability.from_dict"></a>
+
+#### from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: Dict[str, Any]) -> "MemorySearchCapability"
+```
+
+Create a MemorySearchCapability instance from a dictionary.
+
+**Arguments**:
+
+- `data` - A dictionary containing the capability data (camelCase wire shape).
+  
+
+**Returns**:
+
+  A MemorySearchCapability instance.
+
+<a id="konnektr_graph.models.MemorySearchCapability.to_dict"></a>
+
+#### to\_dict
+
+```python
+def to_dict() -> Dict[str, Any]
+```
+
+Convert the MemorySearchCapability instance to a dictionary.
+
+**Returns**:
+
+  A dictionary representation of the MemorySearchCapability (camelCase).
+
+<a id="konnektr_graph.models.MemorySearchIndex"></a>
+
+## MemorySearchIndex Objects
+
+```python
+@dataclass
+class MemorySearchIndex()
+```
+
+The HNSW index backing scoped vector memory search.
+
+**Attributes**:
+
+- `index_name` - Name of the index (pre-existing when already created).
+- `dimension` - Embedding dimensionality the index was built for.
+
+<a id="konnektr_graph.models.MemorySearchIndex.from_dict"></a>
+
+#### from\_dict
+
+```python
+@classmethod
+def from_dict(cls, data: Dict[str, Any]) -> "MemorySearchIndex"
+```
+
+Create a MemorySearchIndex instance from a dictionary.
+
+**Arguments**:
+
+- `data` - A dictionary containing the index data (camelCase wire shape).
+  
+
+**Returns**:
+
+  A MemorySearchIndex instance.
+
+<a id="konnektr_graph.models.MemorySearchIndex.to_dict"></a>
+
+#### to\_dict
+
+```python
+def to_dict() -> Dict[str, Any]
+```
+
+Convert the MemorySearchIndex instance to a dictionary.
+
+**Returns**:
+
+  A dictionary representation of the MemorySearchIndex (camelCase).
 
 <a id="konnektr_graph.types"></a>
 
