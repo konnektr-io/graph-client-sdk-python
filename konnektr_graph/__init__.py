@@ -9,12 +9,16 @@ from .exceptions import (
     ResourceNotFoundError,
     ResourceExistsError,
     AuthenticationError,
+    ServiceUnavailableError,
     ValidationError,
 )
 from .models import (
     ImportJob,
     DeleteJob,
     DigitalTwinsModelData,
+    MemorySearchCapability,
+    MemorySearchIndex,
+    MemorySearchResult,
 )
 from .types import (
     # Structured Models (Dataclasses)
@@ -65,11 +69,15 @@ __all__ = [
     "ResourceNotFoundError",
     "ResourceExistsError",
     "AuthenticationError",
+    "ServiceUnavailableError",
     "ValidationError",
     # Models
     "ImportJob",
     "DeleteJob",
     "DigitalTwinsModelData",
+    "MemorySearchCapability",
+    "MemorySearchIndex",
+    "MemorySearchResult",
     # Structured Models (Dataclasses)
     "BasicDigitalTwin",
     "BasicRelationship",

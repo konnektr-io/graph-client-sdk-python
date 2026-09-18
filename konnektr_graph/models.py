@@ -2,9 +2,12 @@
 """
 Konnektr Graph SDK models (Azure-free).
 """
+import math
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from .exceptions import ValidationError
 from .types import (
     DtdlCommand,
     DtdlComponent,
@@ -273,3 +276,258 @@ class DigitalTwinsModelData:
         if self.commands is not None:
             result["commands"] = [c.to_dict() for c in self.commands]
         return result
+
+
+# --- Scoped vector memory search ---
+#
+# Typed client surface for POST /digitaltwins/memory-search (+ the companion
+# /digitaltwins/memory-search/index and .../capability endpoints). The wire
+# shape mirrors the graph API: camelCase field names, null optionals omitted.
+
+#: Maximum number of ranked records a single memory search may request (1..100).
+MEMORY_SEARCH_MAX_LIMIT = 100
+
+#: Maximum supported query-vector dimensionality (HNSW index limit).
+MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS = 2000
+
+#: Maximum excerpt characters per memory-search record (1..4000).
+MEMORY_SEARCH_MAX_EXCERPT_LENGTH = 4000
+
+_IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _check_embedding_property(embedding_property: str) -> None:
+    if not embedding_property or not _IDENTIFIER_PATTERN.match(embedding_property):
+        raise ValidationError(
+            f"Embedding property '{embedding_property}' is not a valid property identifier."
+        )
+
+
+def validate_memory_search_options(
+    vector: List[float],
+    embedding_property: str = "embedding",
+    limit: int = 10,
+    model_ids: Optional[List[str]] = None,
+    property_filters: Optional[Dict[str, str]] = None,
+    related_twin_id: Optional[str] = None,
+    expected_dimension: Optional[int] = None,
+    excerpt_length: Optional[int] = None,
+) -> None:
+    """Validate scoped memory-search arguments client-side.
+
+    Mirrors the server bounds; server validation remains authoritative.
+
+    Raises:
+        ValidationError: If any argument violates its constraint.
+    """
+    if not vector:
+        raise ValidationError("Query vector must contain at least one dimension.")
+    if len(vector) > MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS:
+        raise ValidationError(
+            f"Query vector has {len(vector)} dimensions, which exceeds the maximum "
+            f"of {MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS}."
+        )
+    if any(not isinstance(v, (int, float)) or not math.isfinite(v) for v in vector):
+        raise ValidationError("Query vector must only contain finite numbers.")
+    _check_embedding_property(embedding_property)
+    if limit < 1 or limit > MEMORY_SEARCH_MAX_LIMIT:
+        raise ValidationError(f"Limit must be between 1 and {MEMORY_SEARCH_MAX_LIMIT}.")
+    if model_ids is not None:
+        for model_id in model_ids:
+            if not model_id or not model_id.strip():
+                raise ValidationError("Model allow-list must not contain empty model IDs.")
+    if property_filters is not None:
+        for key, value in property_filters.items():
+            if not key or not _IDENTIFIER_PATTERN.match(key):
+                raise ValidationError(
+                    f"Property filter key '{key}' is not a valid property identifier."
+                )
+            if value is None:
+                raise ValidationError(
+                    f"Property filter '{key}' must have a non-null value."
+                )
+    if related_twin_id is not None and not related_twin_id.strip():
+        raise ValidationError("Related twin ID must not be empty when provided.")
+    if expected_dimension is not None:
+        if (
+            expected_dimension < 1
+            or expected_dimension > MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS
+        ):
+            raise ValidationError(
+                "Expected dimension must be between 1 and "
+                f"{MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS}."
+            )
+        if expected_dimension != len(vector):
+            raise ValidationError(
+                f"Query vector has {len(vector)} dimensions but "
+                f"{expected_dimension} were expected."
+            )
+    if excerpt_length is not None and (
+        excerpt_length < 1 or excerpt_length > MEMORY_SEARCH_MAX_EXCERPT_LENGTH
+    ):
+        raise ValidationError(
+            "Excerpt length must be between 1 and "
+            f"{MEMORY_SEARCH_MAX_EXCERPT_LENGTH}."
+        )
+
+
+def validate_memory_search_index_options(
+    dimension: int,
+    embedding_property: str = "embedding",
+    m: Optional[int] = None,
+    ef_construction: Optional[int] = None,
+) -> None:
+    """Validate memory-search HNSW index arguments client-side.
+
+    Raises:
+        ValidationError: If any argument violates its constraint.
+    """
+    _check_embedding_property(embedding_property)
+    if dimension < 1 or dimension > MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS:
+        raise ValidationError(
+            "Index dimension must be between 1 and "
+            f"{MEMORY_SEARCH_MAX_VECTOR_DIMENSIONS}."
+        )
+    if m is not None and (m < 2 or m > 100):
+        raise ValidationError("HNSW m must be between 2 and 100.")
+    if ef_construction is not None and (ef_construction < 4 or ef_construction > 1000):
+        raise ValidationError("HNSW ef_construction must be between 4 and 1000.")
+
+
+@dataclass
+class MemorySearchResult:
+    """
+    A single ranked record from scoped vector memory search.
+
+    Scope predicates (model allow-list, property equality filters, related-twin
+    predicate) are applied by the server in the database *before*
+    nearest-neighbour ranking and ``LIMIT`` — the ranking never sees
+    out-of-scope records.
+
+    Attributes:
+        id: Stable twin ID ($dtId).
+        model_id: Twin model ID ($metadata.$model), when known.
+        distance: L2 distance to the query vector. Lower values rank first.
+        excerpt: Bounded JSON excerpt of the twin's properties. The embedding
+            vector itself is excluded; fetch the full twin via
+            ``get_digital_twin`` when needed.
+        last_updated_on: Last update time of the twin, when known (ISO 8601).
+    """
+
+    id: str
+    distance: float
+    excerpt: str
+    model_id: Optional[str] = None
+    last_updated_on: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MemorySearchResult":
+        """
+        Create a MemorySearchResult instance from a dictionary.
+
+        Args:
+            data: A dictionary containing the memory search result data
+                (camelCase wire shape).
+
+        Returns:
+            A MemorySearchResult instance.
+        """
+        return cls(
+            id=data.get("id", ""),
+            distance=data.get("distance", 0.0),
+            excerpt=data.get("excerpt", ""),
+            model_id=data.get("modelId"),
+            last_updated_on=data.get("lastUpdatedOn"),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the MemorySearchResult instance to a dictionary.
+
+        Returns:
+            A dictionary representation of the MemorySearchResult (camelCase).
+        """
+        result: Dict[str, Any] = {
+            "id": self.id,
+            "distance": self.distance,
+            "excerpt": self.excerpt,
+        }
+        if self.model_id is not None:
+            result["modelId"] = self.model_id
+        if self.last_updated_on is not None:
+            result["lastUpdatedOn"] = self.last_updated_on
+        return result
+
+
+@dataclass
+class MemorySearchCapability:
+    """
+    Capability report for scoped vector memory search.
+
+    Attributes:
+        vector_search_available: True when the pgvector extension is installed
+            and memory search can be served.
+    """
+
+    vector_search_available: bool
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MemorySearchCapability":
+        """
+        Create a MemorySearchCapability instance from a dictionary.
+
+        Args:
+            data: A dictionary containing the capability data (camelCase wire shape).
+
+        Returns:
+            A MemorySearchCapability instance.
+        """
+        return cls(vector_search_available=data.get("vectorSearchAvailable", False))
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the MemorySearchCapability instance to a dictionary.
+
+        Returns:
+            A dictionary representation of the MemorySearchCapability (camelCase).
+        """
+        return {"vectorSearchAvailable": self.vector_search_available}
+
+
+@dataclass
+class MemorySearchIndex:
+    """
+    The HNSW index backing scoped vector memory search.
+
+    Attributes:
+        index_name: Name of the index (pre-existing when already created).
+        dimension: Embedding dimensionality the index was built for.
+    """
+
+    index_name: str
+    dimension: int
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MemorySearchIndex":
+        """
+        Create a MemorySearchIndex instance from a dictionary.
+
+        Args:
+            data: A dictionary containing the index data (camelCase wire shape).
+
+        Returns:
+            A MemorySearchIndex instance.
+        """
+        return cls(
+            index_name=data.get("indexName", ""),
+            dimension=data.get("dimension", 0),
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the MemorySearchIndex instance to a dictionary.
+
+        Returns:
+            A dictionary representation of the MemorySearchIndex (camelCase).
+        """
+        return {"indexName": self.index_name, "dimension": self.dimension}

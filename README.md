@@ -74,6 +74,40 @@ async def main():
 asyncio.run(main())
 ```
 
+### Scoped Memory Search
+
+```python
+# Environment/user/privacy scoping is enforced SERVER-SIDE: scope predicates
+# (model allow-list, property equality filters, related-twin predicate) are
+# applied in the database *before* nearest-neighbour ranking and LIMIT, so the
+# ranking never sees out-of-scope records. Never filter broad search results
+# locally for authorization — use this dedicated endpoint instead.
+results = client.search_memory(
+    vector=[0.11, -0.02, 0.58],
+    limit=5,
+    model_ids=["dtmi:example:MemoryRecord;1"],
+    property_filters={"environmentId": "env-1", "userId": "user-9"},
+    related_twin_id="session-9",
+)
+for record in results:
+    print(record.id, record.distance, record.excerpt)
+
+# Probe pgvector availability, and create the HNSW index (idempotent) once:
+capability = client.get_memory_search_capability()
+if capability.vector_search_available:
+    client.ensure_memory_search_index(dimension=3)
+```
+
+The async client (`konnektr_graph.aio.KonnektrGraphClient`) exposes the same
+three methods (`search_memory`, `ensure_memory_search_index`,
+`get_memory_search_capability`) with identical signatures and typed results
+(`MemorySearchResult`, `MemorySearchIndex`, `MemorySearchCapability`).
+
+Error mapping: authorization failures raise `AuthenticationError` (401/403),
+server-side validation failures raise `ValidationError` (400), a missing
+pgvector extension raises `ServiceUnavailableError` (503), and transport
+failures raise `HttpResponseError`.
+
 ## Authentication Options
 
 - `ClientSecretCredential` / `AsyncClientSecretCredential`: Ideal for server-to-server scenarios.

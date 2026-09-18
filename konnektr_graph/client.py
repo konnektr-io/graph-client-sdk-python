@@ -23,11 +23,18 @@ from .exceptions import (
     ResourceNotFoundError,
     ResourceExistsError,
     AuthenticationError,
+    ServiceUnavailableError,
+    ValidationError,
 )
 from .models import (
     DeleteJob,
     DigitalTwinsModelData,
     ImportJob,
+    MemorySearchCapability,
+    MemorySearchIndex,
+    MemorySearchResult,
+    validate_memory_search_index_options,
+    validate_memory_search_options,
 )
 from .types import (
     BasicDigitalTwin,
@@ -192,7 +199,10 @@ class KonnektrGraphClient:
             params["api-version"] = self.api_version
         kwargs["params"] = params
 
-        response = requests.request(method, url, headers=headers, **kwargs)
+        try:
+            response = requests.request(method, url, headers=headers, **kwargs)
+        except requests.RequestException as exc:
+            raise HttpResponseError(f"Transport error: {exc}") from exc
 
         if not response.ok:
             self._handle_error(response)
@@ -213,6 +223,10 @@ class KonnektrGraphClient:
             raise ResourceExistsError(message, status_code)
         elif status_code in (401, 403):
             raise AuthenticationError(message, status_code)
+        elif status_code == 400:
+            raise ValidationError(message, status_code)
+        elif status_code == 503:
+            raise ServiceUnavailableError(message, status_code)
         else:
             raise HttpResponseError(f"Error {status_code}: {message}", status_code)
 
@@ -713,6 +727,161 @@ class KonnektrGraphClient:
             body["modelFilter"] = model_filter
         response = self._request("POST", url, json=body, **kwargs)
         return response.json()
+
+    # --- Scoped vector memory search ---
+
+    def search_memory(
+        self,
+        vector: List[float],
+        embedding_property: str = "embedding",
+        limit: int = 10,
+        model_ids: Optional[List[str]] = None,
+        property_filters: Optional[Dict[str, str]] = None,
+        related_twin_id: Optional[str] = None,
+        expected_dimension: Optional[int] = None,
+        excerpt_length: Optional[int] = None,
+        **kwargs: Any,
+    ) -> List[MemorySearchResult]:
+        """
+        Search twin memory with scoped vector similarity (server-side filtering).
+
+        Wraps ``POST /digitaltwins/memory-search``. Scope predicates (model
+        allow-list, property equality filters, related-twin predicate) are
+        applied by the server in the database *before* nearest-neighbour
+        ranking and ``LIMIT`` — the ranking never sees out-of-scope records.
+        Environment, user, and privacy scoping is expressed through
+        ``property_filters`` (caller-managed twin properties, e.g.
+        ``{"environmentId": "env-1", "userId": "user-9"}``) and enforced
+        server-side. This method performs no client-side post-filtering: use
+        the dedicated endpoint instead of filtering broad search results
+        locally.
+
+        Args:
+            vector: Query embedding for semantic similarity search.
+            embedding_property: Name of the twin property containing the
+                embedding. Defaults to "embedding".
+            limit: Maximum number of ranked records to return (1..100).
+                Defaults to 10.
+            model_ids: Optional allow-list of twin model IDs; only twins
+                conforming to one of these models are ranked.
+            property_filters: Optional caller-managed scope predicates as
+                twin-property equality filters (e.g. environment or owner keys).
+            related_twin_id: Optional twin ID; only twins related to this twin
+                are ranked.
+            expected_dimension: Optional expected embedding dimensionality;
+                must equal the query-vector length.
+            excerpt_length: Optional maximum excerpt characters per record
+                (1..4000).
+            **kwargs: Additional request options.
+
+        Returns:
+            Ranked memory records (closest first) as MemorySearchResult.
+
+        Raises:
+            ValidationError: Client-side constraint violated, or the server
+                rejected the request (400).
+            AuthenticationError: Authorization failure (401/403).
+            ServiceUnavailableError: pgvector is not installed on the backing
+                database (503 capability error).
+            HttpResponseError: Transport or other HTTP failure.
+        """
+        validate_memory_search_options(
+            vector,
+            embedding_property,
+            limit,
+            model_ids,
+            property_filters,
+            related_twin_id,
+            expected_dimension,
+            excerpt_length,
+        )
+        url = f"{self.endpoint}/digitaltwins/memory-search"
+        body: Dict[str, Any] = {
+            "vector": vector,
+            "embeddingProperty": embedding_property,
+            "limit": limit,
+        }
+        if model_ids is not None:
+            body["modelIds"] = model_ids
+        if property_filters is not None:
+            body["propertyFilters"] = property_filters
+        if related_twin_id is not None:
+            body["relatedTwinId"] = related_twin_id
+        if expected_dimension is not None:
+            body["expectedDimension"] = expected_dimension
+        if excerpt_length is not None:
+            body["excerptLength"] = excerpt_length
+        response = self._request("POST", url, json=body, **kwargs)
+        return [MemorySearchResult.from_dict(item) for item in response.json()]
+
+    def ensure_memory_search_index(
+        self,
+        dimension: int,
+        embedding_property: str = "embedding",
+        m: Optional[int] = None,
+        ef_construction: Optional[int] = None,
+        **kwargs: Any,
+    ) -> MemorySearchIndex:
+        """
+        Create the HNSW index backing scoped vector memory search (idempotent).
+
+        Wraps ``POST /digitaltwins/memory-search/index``. The dimension must
+        match the stored embedding vectors.
+
+        Args:
+            dimension: Dimensionality of the stored embeddings.
+            embedding_property: Twin property holding the stored embedding.
+                Defaults to "embedding".
+            m: Optional HNSW ``m`` parameter (2..100). Omit for the server default.
+            ef_construction: Optional HNSW ``ef_construction`` parameter
+                (4..1000). Omit for the server default.
+            **kwargs: Additional request options.
+
+        Returns:
+            The memory search index (name and dimension).
+
+        Raises:
+            ValidationError: Client-side constraint violated, or the server
+                rejected the request (400).
+            AuthenticationError: Authorization failure (401/403).
+            ServiceUnavailableError: pgvector is not installed (503).
+            HttpResponseError: Transport or other HTTP failure.
+        """
+        validate_memory_search_index_options(
+            dimension, embedding_property, m, ef_construction
+        )
+        url = f"{self.endpoint}/digitaltwins/memory-search/index"
+        body: Dict[str, Any] = {
+            "embeddingProperty": embedding_property,
+            "dimension": dimension,
+        }
+        if m is not None:
+            body["m"] = m
+        if ef_construction is not None:
+            body["efConstruction"] = ef_construction
+        response = self._request("POST", url, json=body, **kwargs)
+        return MemorySearchIndex.from_dict(response.json())
+
+    def get_memory_search_capability(self, **kwargs: Any) -> MemorySearchCapability:
+        """
+        Report whether the backing database can serve scoped vector memory search.
+
+        Wraps ``GET /digitaltwins/memory-search/capability``. Search and index
+        operations return a 503 capability error when pgvector is unavailable.
+
+        Args:
+            **kwargs: Additional request options.
+
+        Returns:
+            The memory search capability report.
+
+        Raises:
+            AuthenticationError: Authorization failure (401/403).
+            HttpResponseError: Transport or other HTTP failure.
+        """
+        url = f"{self.endpoint}/digitaltwins/memory-search/capability"
+        response = self._request("GET", url, **kwargs)
+        return MemorySearchCapability.from_dict(response.json())
 
     # --- Telemetry ---
 
